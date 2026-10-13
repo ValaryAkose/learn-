@@ -376,7 +376,6 @@ def test_topics_has_unique_target_for_composite_foreign_keys(model_classes):
 
 
 COLUMN_CONTRACT_CASES = [
-    
     ("users", "user_id", PGUUID, False),
     ("users", "learner_code", String, True),
     ("users", "display_name", String, False),
@@ -401,8 +400,6 @@ COLUMN_CONTRACT_CASES = [
     ("topics", "sequence_no", Integer, False),
     ("topics", "is_active", Boolean, False),
     ("topics", "created_at", DateTime, False),
-    
-
     ("learning_content", "content_id", PGUUID, False),
     ("learning_content", "content_series_id", PGUUID, False),
     ("learning_content", "topic_id", PGUUID, False),
@@ -420,8 +417,6 @@ COLUMN_CONTRACT_CASES = [
     ("learning_content", "gemini_file_uploaded_at", DateTime, True),
     ("learning_content", "created_at", DateTime, False),
     ("learning_content", "updated_at", DateTime, False),
-
-
     ("learner_assessments", "assessment_id", PGUUID, False),
     ("learner_assessments", "student_id", PGUUID, False),
     ("learner_assessments", "topic_id", PGUUID, True),
@@ -436,9 +431,6 @@ COLUMN_CONTRACT_CASES = [
     ("learner_assessments", "identified_gaps", Text, True),
     ("learner_assessments", "recommendations", JSONB, False),
     ("learner_assessments", "started_at", DateTime, False),
-
-
-    
     ("learner_progress", "progress_id", PGUUID, False),
     ("learner_progress", "student_id", PGUUID, False),
     ("learner_progress", "subject_name", SQLEnum, False),
@@ -449,9 +441,6 @@ COLUMN_CONTRACT_CASES = [
     ("learner_progress", "recommended_content_id", PGUUID, True),
     ("learner_progress", "first_activity_at", DateTime, True),
     ("learner_progress", "updated_at", DateTime, False),
-
-
-
     ("learner_lesson_progress", "lesson_progress_id", PGUUID, False),
     ("learner_lesson_progress", "student_id", PGUUID, False),
     ("learner_lesson_progress", "topic_id", PGUUID, False),
@@ -459,9 +448,6 @@ COLUMN_CONTRACT_CASES = [
     ("learner_lesson_progress", "status", SQLEnum, False),
     ("learner_lesson_progress", "completed_at", DateTime, True),
     ("learner_lesson_progress", "updated_at", DateTime, False),
-
-
-
     ("ai_tutor_interactions", "interaction_id", PGUUID, False),
     ("ai_tutor_interactions", "conversation_id", PGUUID, False),
     ("ai_tutor_interactions", "student_id", PGUUID, False),
@@ -474,9 +460,6 @@ COLUMN_CONTRACT_CASES = [
     ("ai_tutor_interactions", "response_status", SQLEnum, False),
     ("ai_tutor_interactions", "is_saved_offline", Boolean, False),
     ("ai_tutor_interactions", "created_at", DateTime, False),
-
-
-
     ("offline_packages", "package_id", PGUUID, False),
     ("offline_packages", "subject_name", SQLEnum, False),
     ("offline_packages", "class_level", SQLEnum, False),
@@ -487,9 +470,6 @@ COLUMN_CONTRACT_CASES = [
     ("offline_packages", "checksum", String, False),
     ("offline_packages", "status", SQLEnum, False),
     ("offline_packages", "created_at", DateTime, False),
-
-
-
     ("sync_events", "sync_id", PGUUID, False),
     ("sync_events", "client_event_id", PGUUID, False),
     ("sync_events", "student_id", PGUUID, False),
