@@ -1,10 +1,14 @@
-"""Structural/unit tests for the Redu SQLAlchemy model modules.
-
-These tests intentionally need no running database. They import the real model
-modules and inspect SQLAlchemy's mapped metadata.
-"""
-
 from __future__ import annotations
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 
 import importlib
 
@@ -318,20 +322,6 @@ def test_python_defaults_are_callable_or_literal(model_classes):
                 assert callable(col.default.arg), (
                     f"{table.name}.{col.name} should use a factory for JSON defaults"
                 )
-
-
-# Additional table/column contract tests. These use SQLAlchemy's mapped metadata
-# and require no running PostgreSQL server.
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    ForeignKeyConstraint,
-    Integer,
-    String,
-    Text,
-    UniqueConstraint,
-)
-
 
 def test_assessment_topic_subject_is_one_composite_foreign_key(model_classes):
     table = model_classes["learner_assessments"].__table__
