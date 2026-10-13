@@ -32,8 +32,6 @@ MODEL_MODULES = {
     "models.sync_event": ("SyncEvent", "sync_events"),
 }
 
-# A model's lifecycle timestamp is not always named created_at. Attempts start,
-# topic state updates, and sync events record their own appropriate timestamps.
 LIFECYCLE_TIMESTAMPS = {
     "users": "created_at",
     "topics": "created_at",
@@ -322,6 +320,7 @@ def test_python_defaults_are_callable_or_literal(model_classes):
                 assert callable(col.default.arg), (
                     f"{table.name}.{col.name} should use a factory for JSON defaults"
                 )
+
 
 def test_assessment_topic_subject_is_one_composite_foreign_key(model_classes):
     table = model_classes["learner_assessments"].__table__
