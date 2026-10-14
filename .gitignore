@@ -10,7 +10,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
-*.db
+.env.example
 *.sqlite
 *.sqlite3
 .DS_Store

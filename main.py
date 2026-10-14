@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="Your Project Name", version="0.1.0")
+app = FastAPI(title="Redu", version="0.1.0")
 
 
 @app.get("/health")
