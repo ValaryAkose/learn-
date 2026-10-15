@@ -17,5 +17,5 @@ app.include_router(offline_package_router, prefix="/api/v1")
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    
+
     return {"status": "ok"}
