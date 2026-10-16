@@ -16,19 +16,16 @@ router = APIRouter(prefix="/sync-events", tags=["sync events"])
 def get_service(db: Session = Depends(get_db)) -> SyncEventService:
     sync_repo = SyncEventRepository(db)
     package_repo = OfflinePackageRepository(db)
-    return SyncEventService(sync_repo, package_repo)
+    return SyncEventService(sync_repo, package_repo, db)
 
 
 @router.post("", response_model=SyncEventResponse, status_code=status.HTTP_201_CREATED)
 def record_sync_event(
     payload: SyncEventCreate,
     response: Response,
-    db: Session = Depends(get_db),
     service: SyncEventService = Depends(get_service),
 ):
     event, created = service.record_event(payload)
-
-    db.commit()
 
     if not created:
         response.status_code = status.HTTP_200_OK

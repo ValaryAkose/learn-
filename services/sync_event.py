@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from core.enums import PackageStatus, SyncEventType, SyncStatus
 from core.exceptions import BusinessRuleError, NotFoundError
 from models.sync_event import SyncEvent
@@ -11,10 +13,14 @@ from schemas.sync_event import SyncEventCreate
 
 class SyncEventService:
     def __init__(
-        self, sync_repo: SyncEventRepository, package_repo: OfflinePackageRepository
+        self,
+        sync_repo: SyncEventRepository,
+        package_repo: OfflinePackageRepository,
+        db: Session,
     ) -> None:
         self.repo = sync_repo
         self.package_repo = package_repo
+        self.db = db
 
     def get_event(self, sync_id: UUID) -> SyncEvent:
         event = self.repo.get(sync_id)
@@ -54,4 +60,7 @@ class SyncEventService:
             values["processed_at"] = datetime.now(timezone.utc)
 
         event = self.repo.create(values)
+
+        self.db.commit()
+
         return event, True
