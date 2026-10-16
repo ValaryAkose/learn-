@@ -115,7 +115,7 @@ def test_record_progress_sync(client, student_id):
     data = response.json()
     assert data["sync_id"]
     assert data["received_at"]
-    assert data["processed_at"] is None  
+    assert data["processed_at"] is None
 
 
 def test_replayed_event_is_not_saved_twice(client, student_id):
@@ -157,7 +157,7 @@ def test_download_of_published_package(client, student_id):
     response = client.post(BASE, json=body)
     assert response.status_code == 201
     data = response.json()
-    assert data["package_version"] == "2.0"  
+    assert data["package_version"] == "2.0"
     assert data["processed_at"] is not None
 
 

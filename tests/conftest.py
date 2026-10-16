@@ -32,7 +32,6 @@ def model_classes():
 
 @pytest.fixture(scope="module")
 def client():
-    """Create a clean test client instance for your FastAPI application."""
     from main import app
 
     with TestClient(app) as test_client:
