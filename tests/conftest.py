@@ -1,5 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 
 from database import Base, get_session_factory
 from models.ai_tutor_interaction import AITutorInteraction
@@ -29,6 +31,14 @@ MODELS = (
 def init_test_schema():
     session_factory = get_session_factory()
     engine = session_factory.kw.get("bind")
+
+    if engine and str(engine.url) == "sqlite://":
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        session_factory.configure(bind=engine)
 
     if engine:
         Base.metadata.create_all(bind=engine)
