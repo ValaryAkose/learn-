@@ -1,4 +1,3 @@
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -36,9 +35,7 @@ def get_tutor_interaction_service(
 )
 def create_interaction(
     data: AITutorInteractionCreate,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.create_interaction(data)
 
@@ -49,9 +46,7 @@ def create_interaction(
 )
 def get_interaction(
     interaction_id: UUID,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     interaction = service.get_interaction(interaction_id)
 
@@ -72,9 +67,7 @@ def list_student_interactions(
     student_id: UUID,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.list_student_interactions(
         student_id,
@@ -90,9 +83,7 @@ def list_student_interactions(
 def get_conversation(
     student_id: UUID,
     conversation_id: UUID,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.get_conversation(
         conversation_id,
@@ -110,9 +101,7 @@ def list_conversations(
     subject: SubjectName | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.list_conversation_summaries(
         student_id,
@@ -132,9 +121,7 @@ def get_learner_activity(
     subject: SubjectName | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.get_learner_activity(
         student_id,
@@ -152,9 +139,7 @@ def set_conversation_offline(
     student_id: UUID,
     conversation_id: UUID,
     data: AITutorConversationOfflineUpdate,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     download = service.set_conversation_saved_offline(
         student_id,
@@ -178,9 +163,7 @@ def search_interactions(
     q: str = Query(..., min_length=1, max_length=200),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     return service.search_interactions(
         student_id,
@@ -197,9 +180,7 @@ def search_interactions(
 def update_interaction(
     interaction_id: UUID,
     data: AITutorInteractionUpdate,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     interaction = service.update_interaction(interaction_id, data)
 
@@ -218,9 +199,7 @@ def update_interaction(
 )
 def delete_interaction(
     interaction_id: UUID,
-    service: AITutorInteractionService = Depends(
-        get_tutor_interaction_service
-    ),
+    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
 ):
     deleted = service.delete_interaction(interaction_id)
 

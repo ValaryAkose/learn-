@@ -1,4 +1,3 @@
-
 from uuid import UUID, uuid4
 
 from core.exceptions import BusinessRuleError, NotFoundError
@@ -137,8 +136,7 @@ class AITutorInteractionService:
             is_saved_offline=is_saved_offline,
             interaction_count=updated_count,
             interactions=[
-                AITutorInteractionResponse.model_validate(item)
-                for item in interactions
+                AITutorInteractionResponse.model_validate(item) for item in interactions
             ],
         )
 
@@ -165,8 +163,7 @@ class AITutorInteractionService:
             limit=limit,
         )
         return [
-            AITutorInteractionResponse.model_validate(item)
-            for item in interactions
+            AITutorInteractionResponse.model_validate(item) for item in interactions
         ]
 
     def get_conversation(
@@ -179,8 +176,7 @@ class AITutorInteractionService:
             student_id,
         )
         return [
-            AITutorInteractionResponse.model_validate(item)
-            for item in interactions
+            AITutorInteractionResponse.model_validate(item) for item in interactions
         ]
 
     def search_interactions(
@@ -197,8 +193,7 @@ class AITutorInteractionService:
             limit=limit,
         )
         return [
-            AITutorInteractionResponse.model_validate(item)
-            for item in interactions
+            AITutorInteractionResponse.model_validate(item) for item in interactions
         ]
 
     def update_interaction(

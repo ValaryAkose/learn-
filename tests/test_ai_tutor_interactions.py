@@ -401,9 +401,7 @@ def test_list_conversations_defaults_to_all_five_subjects(
     tutor_repository_override,
 ):
     repository = tutor_repository_override
-    response = client.get(
-        f"/ai-tutor/students/{repository.student_id}/conversations"
-    )
+    response = client.get(f"/ai-tutor/students/{repository.student_id}/conversations")
 
     assert response.status_code == 200
     assert {item["subject_name"] for item in response.json()} == {

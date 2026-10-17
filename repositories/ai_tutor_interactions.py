@@ -1,4 +1,3 @@
-
 from uuid import UUID, uuid4
 
 from sqlalchemy import String, cast, delete, func, or_, select, text, update
@@ -106,9 +105,7 @@ class AITutorInteractionRepository:
             AITutorInteraction.student_id,
             AITutorInteraction.topic_id,
             AITutorInteraction.content_id,
-            func.lower(cast(AITutorInteraction.tutor_type, String)).label(
-                "tutor_type"
-            ),
+            func.lower(cast(AITutorInteraction.tutor_type, String)).label("tutor_type"),
             AITutorInteraction.student_query,
             func.lower(cast(AITutorInteraction.explanation_mode, String)).label(
                 "explanation_mode"
@@ -162,9 +159,7 @@ class AITutorInteractionRepository:
             )
 
         if search:
-            matching_conversations = select(
-                AITutorInteraction.conversation_id
-            ).where(
+            matching_conversations = select(AITutorInteraction.conversation_id).where(
                 AITutorInteraction.student_id == student_id,
                 or_(
                     AITutorInteraction.student_query.ilike(f"%{search}%"),
@@ -212,9 +207,7 @@ class AITutorInteractionRepository:
         limit: int = 100,
     ) -> list[dict[str, object]]:
         normalized_subject = func.lower(cast(Topic.subject_name, String))
-        normalized_status = func.lower(
-            cast(LearnerLessonProgress.status, String)
-        )
+        normalized_status = func.lower(cast(LearnerLessonProgress.status, String))
         statement = (
             select(
                 LearnerLessonProgress.lesson_progress_id,
@@ -254,9 +247,7 @@ class AITutorInteractionRepository:
         limit: int = 100,
     ) -> list[dict[str, object]]:
         normalized_subject = func.lower(cast(Topic.subject_name, String))
-        normalized_content_type = func.lower(
-            cast(LearningContent.content_type, String)
-        )
+        normalized_content_type = func.lower(cast(LearningContent.content_type, String))
         normalized_question_type = func.lower(
             cast(LearningContent.question_type, String)
         )
@@ -293,15 +284,11 @@ class AITutorInteractionRepository:
         skip: int = 0,
         limit: int = 100,
     ) -> list[dict[str, object]]:
-        normalized_subject = func.lower(
-            cast(LearnerAssessment.subject_name, String)
-        )
+        normalized_subject = func.lower(cast(LearnerAssessment.subject_name, String))
         normalized_assessment_type = func.lower(
             cast(LearnerAssessment.assessment_type, String)
         )
-        normalized_status = func.lower(
-            cast(LearnerAssessment.status, String)
-        )
+        normalized_status = func.lower(cast(LearnerAssessment.status, String))
         statement = (
             select(
                 LearnerAssessment.assessment_id,
@@ -453,12 +440,8 @@ class AITutorInteractionRepository:
             .where(
                 AITutorInteraction.student_id == student_id,
                 or_(
-                    AITutorInteraction.student_query.ilike(
-                        f"%{search}%"
-                    ),
-                    AITutorInteraction.ai_response.ilike(
-                        f"%{search}%"
-                    ),
+                    AITutorInteraction.student_query.ilike(f"%{search}%"),
+                    AITutorInteraction.ai_response.ilike(f"%{search}%"),
                 ),
             )
             .order_by(AITutorInteraction.created_at.desc())
@@ -483,5 +466,3 @@ class AITutorInteractionRepository:
         )
         self.db.commit()
         return bool(result.rowcount)
-
-
