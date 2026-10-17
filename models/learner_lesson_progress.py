@@ -54,6 +54,7 @@ class LearnerLessonProgress(Base):
         SQLEnum(
             ProgressStatus,
             name="lesson_progress_status",
+            values_callable=lambda e: [item.value for item in e],
         ),
         nullable=False,
         default=ProgressStatus.NOT_STARTED,

@@ -46,7 +46,11 @@ class AITutorInteraction(Base):
     )
 
     tutor_type: Mapped[TutorType] = mapped_column(
-        SQLEnum(TutorType, name="tutor_type"),
+        SQLEnum(
+            TutorType,
+            name="tutor_type",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=False,
     )
 
@@ -56,7 +60,11 @@ class AITutorInteraction(Base):
     )
 
     explanation_mode: Mapped[ExplanationMode] = mapped_column(
-        SQLEnum(ExplanationMode, name="explanation_mode"),
+        SQLEnum(
+            ExplanationMode,
+            name="explanation_mode",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=False,
     )
 
@@ -71,7 +79,11 @@ class AITutorInteraction(Base):
     )
 
     response_status: Mapped[ResponseStatus] = mapped_column(
-        SQLEnum(ResponseStatus, name="response_status"),
+        SQLEnum(
+            ResponseStatus,
+            name="response_status",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=False,
         default=ResponseStatus.ANSWERED,
     )

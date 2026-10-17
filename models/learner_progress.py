@@ -50,7 +50,11 @@ class LearnerProgress(Base):
     )
 
     subject_name: Mapped[SubjectName] = mapped_column(
-        SQLEnum(SubjectName, name="subject_name"),
+        SQLEnum(
+            SubjectName,
+            name="subject_name",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=False,
     )
 
@@ -60,7 +64,11 @@ class LearnerProgress(Base):
     )
 
     progress_status: Mapped[ProgressStatus] = mapped_column(
-        SQLEnum(ProgressStatus, name="progress_status"),
+        SQLEnum(
+            ProgressStatus,
+            name="progress_status",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=False,
         default=ProgressStatus.NOT_STARTED,
     )
@@ -71,7 +79,11 @@ class LearnerProgress(Base):
     )
 
     latest_evaluation: Mapped[EvaluationStatus | None] = mapped_column(
-        SQLEnum(EvaluationStatus, name="evaluation_status"),
+        SQLEnum(
+            EvaluationStatus,
+            name="evaluation_status",
+            values_callable=lambda e: [item.value for item in e],
+        ),
         nullable=True,
     )
 
