@@ -59,11 +59,7 @@ class LearnerAssessment(Base):
     )
 
     assessment_type: Mapped[AssessmentType] = mapped_column(
-        SQLEnum(
-            AssessmentType,
-            name="assessment_type",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(AssessmentType, name="assessment_type"),
         nullable=False,
     )
 
@@ -80,20 +76,12 @@ class LearnerAssessment(Base):
     )
 
     subject_name: Mapped[SubjectName] = mapped_column(
-        SQLEnum(
-            SubjectName,
-            name="subject_name",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(SubjectName, name="subject_name"),
         nullable=False,
     )
 
     status: Mapped[AssessmentStatus] = mapped_column(
-        SQLEnum(
-            AssessmentStatus,
-            name="assessment_status",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(AssessmentStatus, name="assessment_status"),
         nullable=False,
         default=AssessmentStatus.IN_PROGRESS,
     )

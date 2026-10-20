@@ -40,11 +40,7 @@ class LearningContent(Base):
     )
 
     content_type: Mapped[ContentType] = mapped_column(
-        SQLEnum(
-            ContentType,
-            name="content_type",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(ContentType, name="content_type"),
         nullable=False,
     )
 
@@ -79,11 +75,7 @@ class LearningContent(Base):
     )
 
     question_type: Mapped[QuestionType | None] = mapped_column(
-        SQLEnum(
-            QuestionType,
-            name="question_type",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(QuestionType, name="question_type"),
         nullable=True,
     )
 

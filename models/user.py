@@ -52,11 +52,7 @@ class User(Base):
     )
 
     role: Mapped[UserRole] = mapped_column(
-        SQLEnum(
-            UserRole,
-            name="user_role",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(UserRole, name="user_role"),
         nullable=False,
     )
 
@@ -66,11 +62,7 @@ class User(Base):
     )
 
     class_level: Mapped[ClassLevel | None] = mapped_column(
-        SQLEnum(
-            ClassLevel,
-            name="class_level",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(ClassLevel, name="class_level"),
         nullable=True,
     )
 
@@ -95,11 +87,7 @@ class User(Base):
     )
 
     consent_status: Mapped[ConsentStatus] = mapped_column(
-        SQLEnum(
-            ConsentStatus,
-            name="consent_status",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(ConsentStatus, name="consent_status"),
         nullable=False,
         default=ConsentStatus.PENDING,
     )

@@ -35,20 +35,12 @@ class OfflinePackage(Base):
     )
 
     subject_name: Mapped[SubjectName] = mapped_column(
-        SQLEnum(
-            SubjectName,
-            name="subject_name",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(SubjectName, name="subject_name"),
         nullable=False,
     )
 
     class_level: Mapped[ClassLevel] = mapped_column(
-        SQLEnum(
-            ClassLevel,
-            name="class_level",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(ClassLevel, name="class_level"),
         nullable=False,
     )
 
@@ -89,11 +81,7 @@ class OfflinePackage(Base):
     )
 
     status: Mapped[PackageStatus] = mapped_column(
-        SQLEnum(
-            PackageStatus,
-            name="package_status",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(PackageStatus, name="package_status"),
         nullable=False,
         default=PackageStatus.DRAFT,
     )

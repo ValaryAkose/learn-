@@ -53,20 +53,12 @@ class SyncEvent(Base):
     )
 
     event_type: Mapped[SyncEventType] = mapped_column(
-        SQLEnum(
-            SyncEventType,
-            name="sync_event_type",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(SyncEventType, name="sync_event_type"),
         nullable=False,
     )
 
     sync_status: Mapped[SyncStatus] = mapped_column(
-        SQLEnum(
-            SyncStatus,
-            name="sync_status",
-            values_callable=lambda e: [item.value for item in e],
-        ),
+        SQLEnum(SyncStatus, name="sync_status"),
         nullable=False,
     )
 
