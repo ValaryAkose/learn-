@@ -2,14 +2,14 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.orm import Session
 
 from core.enums import SyncEventType, SyncStatus
-from database import get_db
-from repositories.offline_package_repository import OfflinePackageRepository
-from repositories.sync_event_repository import SyncEventRepository
 from schemas.sync_event import SyncEventCreate, SyncEventResponse
 from services.sync_event import SyncEventService
+from database import get_db
+from sqlalchemy.orm import Session
+from repositories.sync_event_repository import SyncEventRepository
+from repositories.offline_package_repository import OfflinePackageRepository
 
 router = APIRouter(prefix="/sync-events", tags=["Sync Events"])
 
@@ -23,11 +23,10 @@ def get_service(db: Session = Depends(get_db)) -> SyncEventService:
 @router.post("", response_model=SyncEventResponse, status_code=status.HTTP_201_CREATED)
 def record_sync_event(
     payload: SyncEventCreate,
-    db: Session = Depends(get_db),
     service: SyncEventService = Depends(get_service),
 ):
+    
     event, _ = service.record_event(payload)
-    db.commit()
     return event
 
 
