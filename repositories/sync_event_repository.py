@@ -26,7 +26,6 @@ class SyncEventRepository:
         return self.db.scalars(stmt).first()
 
     def student_exists(self, student_id: UUID) -> bool:
-        """Checks if a student exists using a database query."""
         stmt = select(User).where(User.user_id == student_id)
         return self.db.scalars(stmt.limit(1)).first() is not None
 
@@ -55,6 +54,6 @@ class SyncEventRepository:
     def create(self, values: dict[str, Any]) -> SyncEvent:
         event = SyncEvent(**values)
         self.db.add(event)
-        self.db.flush()
+        self.db.commit()
         self.db.refresh(event)
         return event

@@ -1,8 +1,6 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy.orm import Session
-
 from core.enums import PackageStatus, SyncEventType, SyncStatus
 from core.exceptions import BusinessRuleError, NotFoundError
 from models.sync_event import SyncEvent
@@ -16,11 +14,9 @@ class SyncEventService:
         self,
         sync_repo: SyncEventRepository,
         package_repo: OfflinePackageRepository,
-        db: Session,
     ) -> None:
         self.repo = sync_repo
         self.package_repo = package_repo
-        self.db = db
 
     def get_event(self, sync_id: UUID) -> SyncEvent:
         event = self.repo.get(sync_id)
@@ -32,14 +28,25 @@ class SyncEventService:
         return self.repo.list(**filters)
 
     def record_event(self, payload: SyncEventCreate) -> tuple[SyncEvent, bool]:
-        existing = self.repo.get_by_client_event(
-            payload.student_id, payload.client_event_id
-        )
-        if existing is not None:
-            return existing, False
+        if payload.event_type == SyncEventType.PACKAGE_DOWNLOAD:
+            if payload.package_id is None:
+                raise BusinessRuleError("package_id is required for package downloads")
+            if payload.records_synced != 0:
+                raise BusinessRuleError(
+                    "records_synced must be 0 for package downloads"
+                )
+            if payload.event_payload is not None:
+                raise BusinessRuleError(
+                    "event_payload must be empty for package downloads"
+                )
+        elif payload.event_type == SyncEventType.PROGRESS_SYNC:
+            if payload.package_id is not None:
+                raise BusinessRuleError(
+                    "package_id cannot be provided for progress syncs"
+                )
 
-        if not self.repo.student_exists(payload.student_id):
-            raise NotFoundError("Student not found")
+        if payload.records_synced < 0:
+            raise BusinessRuleError("records_synced cannot be negative")
 
         values = payload.model_dump()
 
@@ -59,8 +66,15 @@ class SyncEventService:
 
             values["processed_at"] = datetime.now(timezone.utc)
 
-        event = self.repo.create(values)
+        if not self.repo.student_exists(payload.student_id):
+            raise NotFoundError("Student not found")
 
-        self.db.commit()
+        existing = self.repo.get_by_client_event(
+            payload.student_id, payload.client_event_id
+        )
+        if existing is not None:
+            return existing, False
+
+        event = self.repo.create(values)
 
         return event, True
