@@ -75,7 +75,6 @@ class SyncEventService:
         if existing is not None:
             return existing, False
 
-        
         event = self.repo.create(values)
 
         return event, True

@@ -25,7 +25,7 @@ def record_sync_event(
     payload: SyncEventCreate,
     service: SyncEventService = Depends(get_service),
 ):
-    
+
     event, _ = service.record_event(payload)
     return event
 

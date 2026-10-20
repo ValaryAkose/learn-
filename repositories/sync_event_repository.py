@@ -54,6 +54,6 @@ class SyncEventRepository:
     def create(self, values: dict[str, Any]) -> SyncEvent:
         event = SyncEvent(**values)
         self.db.add(event)
-        self.db.commit()  
+        self.db.commit()
         self.db.refresh(event)
         return event
