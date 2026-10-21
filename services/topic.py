@@ -1,0 +1,117 @@
+from uuid import UUID
+
+from core.enums import ClassLevel, SubjectName
+from core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from models.topic import Topic
+from repositories.topic_repository import TopicRepository
+from schemas.topic import TopicCreate, TopicUpdate
+
+
+class TopicService:
+    def __init__(self, repo: TopicRepository) -> None:
+        self.repo = repo
+
+    def get_topic(self, topic_id: UUID) -> Topic:
+        topic = self.repo.get(topic_id)
+        if topic is None:
+            raise NotFoundError("Topic not found")
+        return topic
+
+    def list_topics(
+        self,
+        *,
+        subject_name: SubjectName | None,
+        class_level: ClassLevel | None,
+        term: int | None,
+        parent_topic_id: UUID | None,
+        is_active: bool | None,
+        limit: int,
+        offset: int,
+    ) -> list[Topic]:
+        return self.repo.list(
+            subject_name=subject_name,
+            class_level=class_level,
+            term=term,
+            parent_topic_id=parent_topic_id,
+            is_active=is_active,
+            limit=limit,
+            offset=offset,
+        )
+
+    def create_topic(self, payload: TopicCreate) -> Topic:
+        if payload.parent_topic_id is not None:
+            parent = self.get_topic(payload.parent_topic_id)
+            self._check_parent_matches(
+                parent, payload.subject_name, payload.class_level
+            )
+
+        if self.repo.sequence_taken(
+            payload.subject_name,
+            payload.class_level,
+            payload.parent_topic_id,
+            payload.sequence_no,
+        ):
+            raise ConflictError("That sequence number is already used at this level")
+
+        return self.repo.create(payload.model_dump())
+
+    def update_topic(self, topic_id: UUID, payload: TopicUpdate) -> Topic:
+        topic = self.get_topic(topic_id)
+        values = payload.model_dump(exclude_unset=True)
+
+        nullable = {"parent_topic_id", "description", "term"}
+        values = {k: v for k, v in values.items() if v is not None or k in nullable}
+
+        new_parent_id = values.get("parent_topic_id", topic.parent_topic_id)
+        new_sequence = values.get("sequence_no", topic.sequence_no)
+
+        if "parent_topic_id" in values and new_parent_id is not None:
+            self._check_not_in_own_branch(topic, new_parent_id)
+
+        if (
+            "parent_topic_id" in values or "sequence_no" in values
+        ) and self.repo.sequence_taken(
+            topic.subject_name,
+            topic.class_level,
+            new_parent_id,
+            new_sequence,
+            exclude_id=topic.topic_id,
+        ):
+            raise ConflictError("That sequence number is already used at this level")
+
+        return self.repo.update(topic, values)
+
+    def deactivate_topic(self, topic_id: UUID) -> None:
+        topic = self.get_topic(topic_id)
+        if topic.is_active:
+            self.repo.update(topic, {"is_active": False})
+
+    @staticmethod
+    def _check_parent_matches(
+        parent: Topic, subject: SubjectName, level: ClassLevel
+    ) -> None:
+        if parent.subject_name != subject or parent.class_level != level:
+            raise BusinessRuleError(
+                "A sub-topic must have the same subject and class level as its parent"
+            )
+
+    def _check_not_in_own_branch(self, topic: Topic, new_parent_id: UUID) -> None:
+        if new_parent_id == topic.topic_id:
+            raise BusinessRuleError("A topic cannot be its own parent")
+
+        parent = self.get_topic(new_parent_id)
+        self._check_parent_matches(parent, topic.subject_name, topic.class_level)
+
+        seen: set[UUID] = set()
+        current: Topic | None = parent
+        while current is not None and current.topic_id not in seen:
+            if current.topic_id == topic.topic_id:
+                raise BusinessRuleError(
+                    "That parent would create a loop in the topic tree"
+                )
+            seen.add(current.topic_id)
+            current = (
+                self.repo.get(current.parent_topic_id)
+                if current.parent_topic_id
+                else None
+            )
