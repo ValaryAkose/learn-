@@ -33,8 +33,6 @@ class OfflinePackageCreate(OfflinePackageBase):
 
 
 class OfflinePackageUpdate(BaseModel):
-    """Only draft packages can be edited. Status changes use publish/withdraw."""
-
     title: Optional[str] = Field(default=None, min_length=1, max_length=150)
     package_version: Optional[str] = Field(default=None, min_length=1, max_length=20)
     manifest: Optional[List[Dict[str, Any]]] = None
