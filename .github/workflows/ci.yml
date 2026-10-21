@@ -10,10 +10,10 @@ jobs:
   tests:
     name: Tests and coverage
     runs-on: [self-hosted, classroom-ci]
-       env:
-        DATABASE_URL: "sqlite://"
-        JWT_SECRET: "test-only-signing-key-do-not-use-in-production"
-        DEFAULT_GENERAL_TOPIC_ID: "00000000-0000-0000-0000-0000000000a1"
+    env:
+      DATABASE_URL: "sqlite://"
+      JWT_SECRET: "test-only-signing-key-do-not-use-in-production"
+      DEFAULT_GENERAL_TOPIC_ID: "00000000-0000-0000-0000-0000000000a1"
     steps:
       - uses: actions/checkout@v4
         with:
