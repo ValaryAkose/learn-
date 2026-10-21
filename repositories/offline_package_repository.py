@@ -9,8 +9,6 @@ from models.offline_package import OfflinePackage
 
 
 class OfflinePackageRepository:
-    """Database access only. No business rules and no commits here."""
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
