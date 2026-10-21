@@ -21,7 +21,7 @@ from services.ai_tutor_interactions import AITutorInteractionService
 router = APIRouter(prefix="/ai-tutor", tags=["AI Tutor"])
 
 
-def get_tutor_interaction_service(
+def get_ai_tutor(
     db: Session = Depends(get_db),
 ) -> AITutorInteractionService:
     repository = AITutorInteractionRepository(db)
@@ -35,9 +35,9 @@ def get_tutor_interaction_service(
 )
 def create_interaction(
     data: AITutorInteractionCreate,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.create_interaction(data)
+    return tutor.create_interaction(data)
 
 
 @router.get(
@@ -46,9 +46,9 @@ def create_interaction(
 )
 def get_interaction(
     interaction_id: UUID,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    interaction = service.get_interaction(interaction_id)
+    interaction = tutor.get_interaction(interaction_id)
 
     if interaction is None:
         raise HTTPException(
@@ -67,9 +67,9 @@ def list_student_interactions(
     student_id: UUID,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.list_student_interactions(
+    return tutor.list_student_interactions(
         student_id,
         skip=skip,
         limit=limit,
@@ -83,9 +83,9 @@ def list_student_interactions(
 def get_conversation(
     student_id: UUID,
     conversation_id: UUID,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.get_conversation(
+    return tutor.get_conversation(
         conversation_id,
         student_id,
     )
@@ -101,9 +101,9 @@ def list_conversations(
     subject: SubjectName | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.list_conversation_summaries(
+    return tutor.list_conversation_summaries(
         student_id,
         search=q,
         subject_name=subject,
@@ -121,9 +121,9 @@ def get_learner_activity(
     subject: SubjectName | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.get_learner_activity(
+    return tutor.get_learner_activity(
         student_id,
         subject_name=subject,
         skip=skip,
@@ -132,16 +132,16 @@ def get_learner_activity(
 
 
 @router.patch(
-    "/students/{student_id}/conversations/{conversation_id}/offline",
+    "/students/{student_id}/conversations/{conversation_id}/save-for-offline-use",
     response_model=AITutorConversationOfflineResponse,
 )
 def set_conversation_offline(
     student_id: UUID,
     conversation_id: UUID,
     data: AITutorConversationOfflineUpdate,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    download = service.set_conversation_saved_offline(
+    download = tutor.set_conversation_saved_offline(
         student_id,
         conversation_id,
         data.is_saved_offline,
@@ -163,9 +163,9 @@ def search_interactions(
     q: str = Query(..., min_length=1, max_length=200),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    return service.search_interactions(
+    return tutor.search_interactions(
         student_id,
         q,
         skip=skip,
@@ -180,9 +180,9 @@ def search_interactions(
 def update_interaction(
     interaction_id: UUID,
     data: AITutorInteractionUpdate,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    interaction = service.update_interaction(interaction_id, data)
+    interaction = tutor.update_interaction(interaction_id, data)
 
     if interaction is None:
         raise HTTPException(
@@ -199,9 +199,9 @@ def update_interaction(
 )
 def delete_interaction(
     interaction_id: UUID,
-    service: AITutorInteractionService = Depends(get_tutor_interaction_service),
+    tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    deleted = service.delete_interaction(interaction_id)
+    deleted = tutor.delete_interaction(interaction_id)
 
     if not deleted:
         raise HTTPException(
