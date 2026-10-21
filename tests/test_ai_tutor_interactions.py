@@ -12,7 +12,7 @@ from core.enums import (
 from main import app
 from models.ai_tutor_interaction import AITutorInteraction
 from repositories.ai_tutor_interactions import AITutorInteractionRepository
-from routers.ai_tutor_interactions import get_tutor_interaction_service
+from routers.ai_tutor_interactions import get_ai_tutor
 from services.ai_tutor_interactions import AITutorInteractionService
 
 
@@ -155,15 +155,15 @@ class StubTutorRepository:
 @pytest.fixture
 def tutor_repository_override():
     repository = StubTutorRepository()
-    original = app.dependency_overrides.get(get_tutor_interaction_service)
-    app.dependency_overrides[get_tutor_interaction_service] = lambda: (
-        AITutorInteractionService(repository)
+    original = app.dependency_overrides.get(get_ai_tutor)
+    app.dependency_overrides[get_ai_tutor] = lambda: AITutorInteractionService(
+        repository
     )
     yield repository
     if original is None:
-        app.dependency_overrides.pop(get_tutor_interaction_service, None)
+        app.dependency_overrides.pop(get_ai_tutor, None)
     else:
-        app.dependency_overrides[get_tutor_interaction_service] = original
+        app.dependency_overrides[get_ai_tutor] = original
 
 
 def interaction_body(repository: StubTutorRepository, **overrides):
@@ -500,7 +500,7 @@ def test_save_conversation_offline_updates_all_interactions(
         },
     ]
     response = client.patch(
-        f"/ai-tutor/students/{repository.student_id}/conversations/{conversation_id}/offline",
+        f"/ai-tutor/students/{repository.student_id}/conversations/{conversation_id}/save-for-offline-use",
         json={"is_saved_offline": True},
     )
 
@@ -526,7 +526,7 @@ def test_save_unknown_conversation_offline_returns_404(
     repository = tutor_repository_override
     repository.updated_interactions = 0
     response = client.patch(
-        f"/ai-tutor/students/{repository.student_id}/conversations/{uuid4()}/offline",
+        f"/ai-tutor/students/{repository.student_id}/conversations/{uuid4()}/save-for-offline-use",
         json={"is_saved_offline": True},
     )
 
