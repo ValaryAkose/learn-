@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+from routers.learner_contents import router as learner_contents_router
 from core.exceptions import AppError
 from routers.offline_package import router as offline_package_router
 from routers.sync_event import router as sync_event_router
@@ -24,6 +24,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 app.include_router(offline_package_router, prefix="/api/v1")
 app.include_router(sync_event_router, prefix="/api/v1")
+app.include_router(learner_contents_router, prefix="/api/v1")
 
 
 @app.get("/health")
