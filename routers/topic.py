@@ -1,10 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from core.enums import ClassLevel, SubjectName
-from core.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from database import get_db
 from repositories.topic_repository import TopicRepository
 from schemas.topic import TopicCreate, TopicResponse, TopicUpdate
@@ -23,16 +22,7 @@ def create_topic(
     payload: TopicCreate,
     service: TopicService = Depends(get_service),
 ):
-    try:
-        return service.create_topic(payload)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except ConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except BusinessRuleError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+    return service.create_topic(payload)
 
 
 @router.get("", response_model=list[TopicResponse])
@@ -59,10 +49,7 @@ def list_topics(
 
 @router.get("/{topic_id}", response_model=TopicResponse)
 def get_topic(topic_id: UUID, service: TopicService = Depends(get_service)):
-    try:
-        return service.get_topic(topic_id)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return service.get_topic(topic_id)
 
 
 @router.patch("/{topic_id}", response_model=TopicResponse)
@@ -71,16 +58,7 @@ def update_topic(
     payload: TopicUpdate,
     service: TopicService = Depends(get_service),
 ):
-    try:
-        return service.update_topic(topic_id, payload)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except ConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except BusinessRuleError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+    return service.update_topic(topic_id, payload)
 
 
 @router.delete("/{topic_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -88,8 +66,5 @@ def deactivate_topic(
     topic_id: UUID,
     service: TopicService = Depends(get_service),
 ):
-    try:
-        service.deactivate_topic(topic_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    service.deactivate_topic(topic_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
