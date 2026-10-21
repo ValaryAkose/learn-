@@ -117,14 +117,14 @@ class AITutorInteractionService:
         student_id: UUID,
         conversation_id: UUID,
         is_saved_offline: bool,
-    ) -> AITutorConversationOfflineResponse | None:
+    ) -> AITutorConversationOfflineResponse:
         updated_count = self.repository.set_conversation_saved_offline(
             student_id,
             conversation_id,
             is_saved_offline,
         )
         if updated_count == 0:
-            return None
+            raise NotFoundError("Tutor conversation not found")
 
         interactions = self.repository.list_by_conversation(
             conversation_id,
@@ -143,11 +143,11 @@ class AITutorInteractionService:
     def get_interaction(
         self,
         interaction_id: UUID,
-    ) -> AITutorInteractionResponse | None:
+    ) -> AITutorInteractionResponse:
         interaction = self.repository.get_response_by_id(interaction_id)
 
         if interaction is None:
-            return None
+            raise NotFoundError("Tutor interaction not found")
 
         return AITutorInteractionResponse.model_validate(interaction)
 
@@ -200,14 +200,16 @@ class AITutorInteractionService:
         self,
         interaction_id: UUID,
         data: AITutorInteractionUpdate,
-    ) -> AITutorInteractionResponse | None:
+    ) -> AITutorInteractionResponse:
         updated = self.repository.update_by_id(
             interaction_id,
             data.model_dump(exclude_unset=True),
         )
         if updated is None:
-            return None
+            raise NotFoundError("Tutor interaction not found")
         return AITutorInteractionResponse.model_validate(updated)
 
-    def delete_interaction(self, interaction_id: UUID) -> bool:
-        return self.repository.delete(interaction_id)
+    def delete_interaction(self, interaction_id: UUID) -> None:
+        deleted = self.repository.delete(interaction_id)
+        if not deleted:
+            raise NotFoundError("Tutor interaction not found")

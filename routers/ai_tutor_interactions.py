@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -48,15 +48,7 @@ def get_interaction(
     interaction_id: UUID,
     tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    interaction = tutor.get_interaction(interaction_id)
-
-    if interaction is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tutor interaction not found",
-        )
-
-    return interaction
+    return tutor.get_interaction(interaction_id)
 
 
 @router.get(
@@ -141,17 +133,11 @@ def set_conversation_offline(
     data: AITutorConversationOfflineUpdate,
     tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    download = tutor.set_conversation_saved_offline(
+    return tutor.set_conversation_saved_offline(
         student_id,
         conversation_id,
         data.is_saved_offline,
     )
-    if download is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tutor conversation not found",
-        )
-    return download
 
 
 @router.get(
@@ -182,15 +168,7 @@ def update_interaction(
     data: AITutorInteractionUpdate,
     tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    interaction = tutor.update_interaction(interaction_id, data)
-
-    if interaction is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tutor interaction not found",
-        )
-
-    return interaction
+    return tutor.update_interaction(interaction_id, data)
 
 
 @router.delete(
@@ -201,10 +179,4 @@ def delete_interaction(
     interaction_id: UUID,
     tutor: AITutorInteractionService = Depends(get_ai_tutor),
 ):
-    deleted = tutor.delete_interaction(interaction_id)
-
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tutor interaction not found",
-        )
+    tutor.delete_interaction(interaction_id)
