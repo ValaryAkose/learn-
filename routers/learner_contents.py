@@ -41,6 +41,8 @@ async def get_lesson_content(
         if not lesson:
             raise HTTPException(status_code=404, detail="Lesson not found")
         return lesson
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -60,7 +62,6 @@ async def get_student_progress_summary(
             )
         )
         completed_count = (await db.execute(completed_lessons_query)).scalar() or 0
-
         avg_score_query = select(func.avg(LearnerAssessment.score)).where(
             LearnerAssessment.student_id == student_id
         )
@@ -86,7 +87,8 @@ async def generate_practice_questions(
     service: LearningContentService = Depends(get_learning_service),
 ):
     try:
-        questions = await service.ai_service.generate_assessment(
+        ai_service = service._get_ai_service()
+        questions = await ai_service.generate_assessment(
             subject_name=data.subject_name,
             class_level=data.class_level,
             assessment_type="practice",
@@ -104,7 +106,8 @@ async def evaluate_practice_submission(
     service: LearningContentService = Depends(get_learning_service),
 ):
     try:
-        result = await service.ai_service.evaluate_submission(
+        ai_service = service._get_ai_service()
+        result = await ai_service.evaluate_submission(
             questions=data.questions,
             student_answers=data.student_answers,
             actual_duration_seconds=data.actual_duration_seconds,
