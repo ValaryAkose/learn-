@@ -28,6 +28,10 @@ class Topic(Base):
             "subject_name",
             name="uq_topics_topic_subject",
         ),
+        UniqueConstraint(
+            "title",
+            name="uq_topics_title_unique",
+        ),
     )
 
     topic_id: Mapped[UUID] = mapped_column(
