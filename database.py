@@ -1,10 +1,18 @@
 import os
 from collections.abc import Iterator
 from functools import lru_cache
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+try:
+    from dotenv import load_dotenv
+    # Load .env from the current backend directory
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
 
 
 class Base(DeclarativeBase):
@@ -41,3 +49,7 @@ def get_db() -> Iterator[Session]:
         yield db
     finally:
         db.close()
+
+
+
+SessionLocal = get_session_factory()

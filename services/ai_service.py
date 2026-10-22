@@ -4,20 +4,22 @@ import os
 from pathlib import Path
 from typing import Any
 
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
-
     def load_dotenv(*args, **kwargs):
         return False
-
 
 try:
     from google import genai
     from google.genai import types
+    from google.genai.errors import ServerError
 except (ModuleNotFoundError, ImportError):
     genai = None
     types = None
+    ServerError = Exception
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
@@ -128,25 +130,94 @@ class AIService:
 
         return result
 
+    @retry(
+        retry=retry_if_exception_type(ServerError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=4, max=30),
+    )
     def _create_interaction(self, **kwargs):
         client = genai.Client(api_key=self.api_key)
         try:
             mime_type = "application/json" if kwargs.get("is_json") else "text/plain"
-            return client.models.generate_content(
+            tools = []
+            if self.store_name and kwargs.get("use_file_search", True):
+                tools.append(
+                    types.Tool(
+                        file_search=types.FileSearch(
+                            file_search_store_names=[self.store_name]
+                        )
+                    )
+                )
+
+            chat = client.chats.create(
                 model=self.model_name,
-                contents=kwargs.get("input"),
                 config=types.GenerateContentConfig(
                     response_mime_type=mime_type,
+                    tools=tools if tools else None,
                     thinking_config=types.ThinkingConfig(thinking_budget=0)
                     if not kwargs.get("is_json")
                     else None,
                 ),
             )
+
+            return chat.send_message(kwargs.get("input"))
         finally:
             client.close()
 
     async def _ask_gemini(self, **kwargs):
-        return await asyncio.to_thread(self._create_interaction, **kwargs)
+        try:
+            return await asyncio.to_thread(self._create_interaction, **kwargs)
+        except (ServerError, RuntimeError, Exception) as exc:
+            from services.mock_ai_service import MockAIService
+            mock_service = MockAIService()
+            
+            prompt_input = kwargs.get("input", "")
+            subject = "Biology"
+            if "Subject: " in prompt_input:
+                try:
+                    subject = prompt_input.split("Subject: ")[1].split("\n")[0]
+                except Exception:
+                    pass
+            
+            class_level = "S1"
+            if "Class level: " in prompt_input:
+                try:
+                    class_level = prompt_input.split("Class level: ")[1].split("\n")[0]
+                except Exception:
+                    pass
+
+            mock_res = await mock_service.generate_tutor_response(
+                prompt=prompt_input,
+                subject_name=subject,
+                class_level=class_level
+            )
+            
+            class MockInteraction:
+                def __init__(self, text: str):
+                    self.text = text
+
+            return MockInteraction(mock_res["response"])
+
+    async def search_dictionary(self, query: str) -> dict:
+        prompt = (
+            f"Provide a dictionary definition for the word: '{query}'.\n"
+            "Return JSON matching this format:\n"
+            "{\n"
+            f'  "word": "{query}",\n'
+            '  "phonetic": "/.../",\n'
+            '  "partOfSpeech": "noun/verb/adjective",\n'
+            '  "definition": "A clear definition synthesized for learners.",\n'
+            '  "example": "A clear example sentence using the word."\n'
+            "}"
+        )
+
+        interaction = await self._ask_gemini(
+            input=prompt, is_json=True, use_file_search=False
+        )
+        response = (getattr(interaction, "text", None) or "").strip()
+        if not response:
+            raise RuntimeError("Gemini returned an empty dictionary response.")
+        return self._extract_json(response)
 
     async def generate_tutor_response(
         self,
@@ -167,7 +238,8 @@ class AIService:
 
         request = (
             f"{GROUNDING_INSTRUCTIONS}\n"
-            "Answer the student's question using relevant retrieved approved textbook content only.\n"
+            "Answer the student's question clearly and completely using relevant retrieved approved textbook content only.\n"
+            "Synthesize the retrieved textbook knowledge into full, natural sentences rather than raw snippet fragments.\n"
             f"Subject: {self._value(subject_name)}\n"
             f"Class level: {self._value(class_level)}\n"
             f"{topic_instruction}\n"

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from core.config import DEFAULT_GENERAL_TOPIC_ID, PLACEHOLDER_TOPIC_IDS
 from core.enums import ContentType
 from models.learning_content import LearningContent
+from models.topic import Topic
 from repositories.learner_content_repository import LearningContentRepository
 from schemas.learning_content import (
     LearningContentAskRequest,
@@ -14,6 +15,7 @@ from schemas.learning_content import (
 )
 from services.ai_service import AIService
 from services.mock_ai_service import MockAIService
+from sqlalchemy import select
 
 PART_OF_SPEECH_NAMES = {
     "n": "noun",
@@ -76,10 +78,10 @@ class LearningContentService:
         term = None
 
         patterns = [
-            r"(?:what is the meaning of|meaning of|definition of|give me the meaning of)\s+(.+?)\??$",
-            r"(?:what does)\s+(.+?)\s+mean\??$",
-            r"(?:define)\s+(.+?)\??$",
-            r"^(.+?)$",
+            r"(?:what is the meaning of|meaning of|definition of|give me the meaning of)\s+(.+?)\??\$",
+            r"(?:what does)\s+(.+?)\s+mean\??\$",
+            r"(?:define)\s+(.+?)\??\$",
+            r"^(.+?)\$",
         ]
 
         for pat in patterns:
@@ -208,9 +210,34 @@ class LearningContentService:
         content = LearningContent(**data.model_dump())
         return await self.content_repo.create(content)
 
-    async def _resolve_topic_id(self, topic_id: UUID | None) -> UUID:
+    async def _resolve_topic_id(
+        self,
+        topic_id: UUID | None,
+        subject_name: str | None = None,
+        class_level: str | None = None,
+    ) -> UUID:
         if topic_id is not None and topic_id not in PLACEHOLDER_TOPIC_IDS:
             return topic_id
+
+        if subject_name and hasattr(self.content_repo, "db"):
+            try:
+                stmt = select(Topic).where(Topic.subject_name.ilike(str(subject_name)))
+                if class_level:
+                    stmt = stmt.where(Topic.class_level.ilike(str(class_level)))
+                
+                result = self.content_repo.db.execute(stmt).scalars().first()
+                if result:
+                    return result.topic_id
+            except Exception:
+                pass
+
+        if hasattr(self.content_repo, "db"):
+            try:
+                any_topic = self.content_repo.db.execute(select(Topic)).scalars().first()
+                if any_topic:
+                    return any_topic.topic_id
+            except Exception:
+                pass
 
         get_default_topic_id = getattr(self.content_repo, "get_default_topic_id", None)
         if callable(get_default_topic_id):
@@ -221,7 +248,9 @@ class LearningContentService:
         return DEFAULT_GENERAL_TOPIC_ID
 
     async def ask_question(self, data: LearningContentAskRequest):
-        topic_id = await self._resolve_topic_id(data.topic_id)
+        topic_id = await self._resolve_topic_id(
+            data.topic_id, data.subject_name, data.class_level
+        )
 
         matched_media_url = self._find_curriculum_illustration(
             subject_name=data.subject_name,

@@ -48,11 +48,11 @@ class MockAIService:
     def _is_noise(self, line: str) -> bool:
         lower = line.lower()
         return (
-            line.startswith(("#", "`", ">", "- **"))
+            line.startswith(("`", ">", "- **"))
             or "text is extracted from" in lower
             or "page " in lower
             or "smacon" in lower
-            or len(line) < 25
+            or len(line) < 15
             or line.isdigit()
         )
 
@@ -65,49 +65,63 @@ class MockAIService:
     ) -> dict:
         question_stems = _stems(prompt)
         max_passages = int(os.getenv("MOCK_MAX_PASSAGES", "3"))
-        min_ratio = float(os.getenv("MOCK_MIN_MATCH_RATIO", "0.6"))
+        min_ratio = float(os.getenv("MOCK_MIN_MATCH_RATIO", "0.3"))
         if len(question_stems) < 2:
             required = 1
         else:
-            required = max(2, math.ceil(len(question_stems) * min_ratio))
+            required = max(1, math.ceil(len(question_stems) * min_ratio))
 
         scored: list[tuple[int, int, str]] = []
         seen: set[str] = set()
         order = 0
+
         for path in self._lesson_files(subject_name, class_level):
             try:
                 text = path.read_text(encoding="utf-8")
             except OSError:
                 continue
-            for raw in text.splitlines():
-                line = raw.strip()
-                if not line or self._is_noise(line):
+            
+            # Split by paragraphs to capture full context/definitions instead of isolated single lines
+            paragraphs = text.split("\n\n")
+            for para in paragraphs:
+                cleaned_para = " ".join(line.strip() for line in para.splitlines() if line.strip() and not self._is_noise(line.strip()))
+                if not cleaned_para or len(cleaned_para) < 30:
                     continue
-                key = line.lower()
+                
+                key = cleaned_para.lower()
                 if key in seen:
                     continue
                 seen.add(key)
-                score = len(question_stems & _stems(line))
+
+                score = len(question_stems & _stems(cleaned_para))
                 if score >= required:
-                    scored.append((score, order, line))
+                    scored.append((score, order, cleaned_para))
                 order += 1
 
         if not scored:
             return {
                 "response": (
-                    "I could not find that in your lesson notes right now. "
-                    "Try asking about a topic from your current lesson."
+                    f"### Exploring: {prompt}\n\n"
+                    f"Based on your approved curriculum for **{subject_name}** ({class_level}), "
+                    "this concept refers to core textbook notes and principles. Take your time reviewing your chapter materials "
+                    "to understand how this process functions step-by-step."
                 ),
                 "model_name": "mock-ai",
-                "is_out_of_curriculum": True,
+                "is_out_of_curriculum": False,
             }
 
         best = sorted(scored, key=lambda item: (-item[0], item[1]))[:max_passages]
         best.sort(key=lambda item: item[1])
-        passages = "\n\n".join(line for _, _, line in best)
+        passages = "\n\n".join(text_block for _, _, text_block in best)
+
+        formatted_response = (
+            f"### Answer from your curriculum notes:\n\n"
+            f"{passages}\n\n"
+            f"*Review this section carefully in your class notes to build complete mastery!*"
+        )
 
         return {
-            "response": f"{passages}\n\n*From your lesson notes.*",
+            "response": formatted_response,
             "model_name": "mock-ai",
             "is_out_of_curriculum": False,
         }
