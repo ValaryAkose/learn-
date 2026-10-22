@@ -3,16 +3,12 @@ from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
-try:
-    from dotenv import load_dotenv
-    # Load .env from the current backend directory
-    load_dotenv(Path(__file__).resolve().parent / ".env")
-except ImportError:
-    pass
 
 
 class Base(DeclarativeBase):
@@ -21,11 +17,13 @@ class Base(DeclarativeBase):
 
 def _database_url() -> str:
     url = os.getenv("DATABASE_URL")
+
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
 
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+
     return url
 
 
@@ -37,14 +35,18 @@ def get_engine() -> Engine:
 @lru_cache
 def get_session_factory() -> sessionmaker[Session]:
     engine = get_engine()
-
     Base.metadata.create_all(bind=engine)
 
-    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    return sessionmaker(
+        bind=engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
 
 
 def get_db() -> Iterator[Session]:
     db = get_session_factory()()
+
     try:
         yield db
     finally:
