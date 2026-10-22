@@ -5,6 +5,7 @@ from core.exceptions import AppError
 from routers.ai_tutor_interactions import router as ai_tutor_interactions_router
 from routers.offline_package import router as offline_package_router
 from routers.sync_event import router as sync_event_router
+from routers.topic import router as topic_router
 
 
 app = FastAPI(title="Redu", version="0.1.0")
@@ -24,6 +25,7 @@ async def app_error_handler(
 app.include_router(ai_tutor_interactions_router)
 app.include_router(offline_package_router, prefix="/api/v1")
 app.include_router(sync_event_router, prefix="/api/v1")
+app.include_router(topic_router, prefix="/api/v1")
 
 
 @app.get("/health")
