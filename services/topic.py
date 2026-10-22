@@ -65,10 +65,14 @@ class TopicService:
             term=None,
             parent_topic_id=None,
             is_active=None,
-            limit=500, 
+            limit=500,
             offset=0,
         )
-        title_matches = [t for t in all_topics if t.title.strip().lower() == payload.title.strip().lower()]
+        title_matches = [
+            t
+            for t in all_topics
+            if t.title.strip().lower() == payload.title.strip().lower()
+        ]
         if title_matches:
             raise ConflictError("That topic title is already in use")
 
@@ -100,11 +104,29 @@ class TopicService:
                 offset=0,
             )
             if matches and any(m.topic_id != topic_id for m in matches):
-                raise ConflictError(f"A topic for {new_subject.value} already exists at level {new_level.value}")
+                raise ConflictError(
+                    f"A topic for {new_subject.value} already exists at level {new_level.value}"
+                )
 
-        if "title" in values and new_title.strip().lower() != topic.title.strip().lower():
-            all_topics = self.repo.list(subject_name=None, class_level=None, term=None, parent_topic_id=None, is_active=None, limit=500, offset=0)
-            title_matches = [t for t in all_topics if t.title.strip().lower() == new_title.strip().lower() and t.topic_id != topic_id]
+        if (
+            "title" in values
+            and new_title.strip().lower() != topic.title.strip().lower()
+        ):
+            all_topics = self.repo.list(
+                subject_name=None,
+                class_level=None,
+                term=None,
+                parent_topic_id=None,
+                is_active=None,
+                limit=500,
+                offset=0,
+            )
+            title_matches = [
+                t
+                for t in all_topics
+                if t.title.strip().lower() == new_title.strip().lower()
+                and t.topic_id != topic_id
+            ]
             if title_matches:
                 raise ConflictError("That topic title is already in use")
 
