@@ -25,11 +25,16 @@ REQUIRED_ENV_VARS = (
     "REDU_ADMIN_BOOTSTRAP_KEY",
 )
 
+
 for env_var in REQUIRED_ENV_VARS:
     value = os.environ.get(env_var)
-    if value is None or value == "":
-        raise RuntimeError(f"Missing required environment variable: {env_var}")
-    os.environ.setdefault(env_var, value)
+    if not value:
+        if env_var == "DATABASE_URL":
+            os.environ[env_var] = "sqlite:///:memory:"
+        else:
+            import secrets
+
+            os.environ[env_var] = secrets.token_hex(32)
 
 
 @pytest.fixture(autouse=True)
