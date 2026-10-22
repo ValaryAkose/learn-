@@ -45,20 +45,6 @@ class TopicService:
                 parent, payload.subject_name, payload.class_level
             )
 
-        existing_combo = self.repo.list(
-            subject_name=payload.subject_name,
-            class_level=payload.class_level,
-            term=None,
-            parent_topic_id=None,
-            is_active=None,
-            limit=1,
-            offset=0,
-        )
-        if existing_combo:
-            raise ConflictError(
-                f"A topic for {payload.subject_name.value} already exists at level {payload.class_level.value}"
-            )
-
         all_topics = self.repo.list(
             subject_name=None,
             class_level=None,
@@ -76,6 +62,14 @@ class TopicService:
         if title_matches:
             raise ConflictError("That topic title is already in use")
 
+        if self.repo.sequence_taken(
+            payload.subject_name,
+            payload.class_level,
+            payload.parent_topic_id,
+            payload.sequence_no,
+        ):
+            raise ConflictError("That sequence number is already used at this level")
+
         return self.repo.create(payload.model_dump())
 
     def update_topic(self, topic_id: UUID, payload: TopicUpdate) -> Topic:
@@ -86,28 +80,13 @@ class TopicService:
         values = {k: v for k, v in values.items() if v is not None or k in nullable}
 
         new_parent_id = values.get("parent_topic_id", topic.parent_topic_id)
-        new_subject = values.get("subject_name", topic.subject_name)
-        new_level = values.get("class_level", topic.class_level)
+        new_sequence = values.get("sequence_no", topic.sequence_no)
         new_title = values.get("title", topic.title)
 
         if "parent_topic_id" in values and new_parent_id is not None:
             self._check_not_in_own_branch(topic, new_parent_id)
 
-        if "subject_name" in values or "class_level" in values:
-            matches = self.repo.list(
-                subject_name=new_subject,
-                class_level=new_level,
-                term=None,
-                parent_topic_id=None,
-                is_active=None,
-                limit=1,
-                offset=0,
-            )
-            if matches and any(m.topic_id != topic_id for m in matches):
-                raise ConflictError(
-                    f"A topic for {new_subject.value} already exists at level {new_level.value}"
-                )
-
+        # 3. Prevent title updates to existing records
         if (
             "title" in values
             and new_title.strip().lower() != topic.title.strip().lower()
@@ -129,6 +108,17 @@ class TopicService:
             ]
             if title_matches:
                 raise ConflictError("That topic title is already in use")
+
+        if (
+            "parent_topic_id" in values or "sequence_no" in values
+        ) and self.repo.sequence_taken(
+            topic.subject_name,
+            topic.class_level,
+            new_parent_id,
+            new_sequence,
+            exclude_id=topic.topic_id,
+        ):
+            raise ConflictError("That sequence number is already used at this level")
 
         return self.repo.update(topic, values)
 

@@ -24,9 +24,9 @@ class Topic(Base):
 
     __table_args__ = (
         UniqueConstraint(
+            "topic_id",
             "subject_name",
-            "class_level",
-            name="uq_topics_subject_per_class_level",
+            name="uq_topics_topic_subject",
         ),
         UniqueConstraint(
             "title",
