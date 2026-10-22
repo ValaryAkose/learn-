@@ -10,7 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
-    UniqueConstraint,
+    UniqueConstraint, 
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -24,9 +24,13 @@ class Topic(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "topic_id",
             "subject_name",
-            name="uq_topics_topic_subject",
+            "class_level",
+            name="uq_topics_subject_per_class_level",
+        ),
+        UniqueConstraint(
+            "title",
+            name="uq_topics_title_unique",
         ),
     )
 
