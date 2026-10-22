@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-load_dotenv(Path(__file__).resolve().parent / ".env")
 
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
 
 class Base(DeclarativeBase):
@@ -51,7 +51,6 @@ def get_db() -> Iterator[Session]:
         yield db
     finally:
         db.close()
-
 
 
 SessionLocal = get_session_factory()

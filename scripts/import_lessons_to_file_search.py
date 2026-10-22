@@ -16,7 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.enums import ContentType
-from database import engine
+from database import get_engine
+
+engine = get_engine()
 from models import LearningContent, Topic
 
 

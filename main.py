@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 
 from core.exceptions import AppError
 from routers.ai_tutor_interactions import router as ai_tutor_interactions_router

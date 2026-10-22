@@ -224,7 +224,7 @@ class LearningContentService:
                 stmt = select(Topic).where(Topic.subject_name.ilike(str(subject_name)))
                 if class_level:
                     stmt = stmt.where(Topic.class_level.ilike(str(class_level)))
-                
+
                 result = self.content_repo.db.execute(stmt).scalars().first()
                 if result:
                     return result.topic_id
@@ -233,7 +233,9 @@ class LearningContentService:
 
         if hasattr(self.content_repo, "db"):
             try:
-                any_topic = self.content_repo.db.execute(select(Topic)).scalars().first()
+                any_topic = (
+                    self.content_repo.db.execute(select(Topic)).scalars().first()
+                )
                 if any_topic:
                     return any_topic.topic_id
             except Exception:
@@ -260,27 +262,20 @@ class LearningContentService:
 
         dictionary_answer = await self._answer_dictionary_question(data)
         if dictionary_answer is not None:
-            return {
-                "content_id": uuid4(),
-                "student_id": data.student_id,
-                "subject_name": data.subject_name,
-                "class_level": data.class_level,
-                "content_series_id": None,
-                "topic_id": topic_id,
-                "content_type": ContentType.QUESTION,
-                "title": data.topic_title or "Word meaning",
-                "content_text": data.student_question,
-                "student_question": data.student_question,
-                "ai_response": dictionary_answer["response"],
-                "simple_definition": dictionary_answer["response"],
-                "official_definition": dictionary_answer["response"],
-                "media_url": matched_media_url,
-                "gemini_file_ref": None,
-                "question_type": None,
-                "answer_options": None,
-                "correct_answer": None,
-                "worked_solution": None,
-                "content_data": {
+            content = LearningContent(
+                student_id=data.student_id,
+                subject_name=data.subject_name,
+                class_level=data.class_level,
+                topic_id=topic_id,
+                content_type=ContentType.QUESTION,
+                title=data.topic_title or "Word meaning",
+                content_text=data.student_question,
+                student_question=data.student_question,
+                ai_response=dictionary_answer["response"],
+                simple_definition=dictionary_answer["response"],
+                official_definition=dictionary_answer["response"],
+                media_url=matched_media_url,
+                content_data={
                     "student_question": data.student_question,
                     "ai_response": dictionary_answer["response"],
                     "model_name": dictionary_answer["model_name"],
@@ -291,10 +286,41 @@ class LearningContentService:
                     "explanation_mode": data.explanation_mode.value,
                     "source": "dictionary",
                 },
-                "version": 1,
-                "gemini_file_uploaded_at": None,
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+            )
+            if getattr(content, "content_id", None) is None:
+                content.content_id = uuid4()
+            if getattr(content, "version", None) is None:
+                content.version = 1
+
+            created = await self.content_repo.create(content)
+            now = datetime.utcnow()
+            return {
+                "content_id": getattr(created, "content_id", content.content_id),
+                "student_id": created.student_id,
+                "subject_name": created.subject_name,
+                "class_level": created.class_level,
+                "content_series_id": created.content_series_id,
+                "topic_id": created.topic_id,
+                "content_type": created.content_type,
+                "title": created.title,
+                "content_text": created.content_text,
+                "student_question": created.student_question,
+                "ai_response": created.ai_response,
+                "simple_definition": created.simple_definition,
+                "official_definition": created.official_definition,
+                "media_url": created.media_url,
+                "gemini_file_ref": created.gemini_file_ref,
+                "question_type": created.question_type,
+                "answer_options": created.answer_options,
+                "correct_answer": created.correct_answer,
+                "worked_solution": created.worked_solution,
+                "content_data": created.content_data,
+                "version": created.version,
+                "gemini_file_uploaded_at": getattr(
+                    created, "gemini_file_uploaded_at", None
+                ),
+                "created_at": getattr(created, "created_at", now),
+                "updated_at": getattr(created, "updated_at", now),
             }
 
         try:
@@ -339,43 +365,38 @@ class LearningContentService:
 
         if getattr(content, "version", None) is None:
             content.version = 1
-        now = datetime.utcnow()
-        response = {
-            "content_id": content.content_id,
-            "student_id": content.student_id,
-            "subject_name": content.subject_name,
-            "class_level": content.class_level,
-            "content_series_id": content.content_series_id,
-            "topic_id": content.topic_id,
-            "content_type": content.content_type,
-            "title": content.title,
-            "content_text": content.content_text,
-            "student_question": content.student_question,
-            "ai_response": content.ai_response,
-            "simple_definition": content.simple_definition,
-            "official_definition": content.official_definition,
-            "media_url": content.media_url,
-            "gemini_file_ref": content.gemini_file_ref,
-            "question_type": content.question_type,
-            "answer_options": content.answer_options,
-            "correct_answer": content.correct_answer,
-            "worked_solution": content.worked_solution,
-            "content_data": content.content_data,
-            "version": content.version,
-            "gemini_file_uploaded_at": None,
-            "created_at": now,
-            "updated_at": now,
-        }
-
-        if isinstance(self.ai_service, MockAIService):
-            return response
 
         created = await self.content_repo.create(content)
-        response["content_id"] = getattr(created, "content_id", response["content_id"])
-        response["created_at"] = getattr(created, "created_at", response["created_at"])
-        response["updated_at"] = getattr(created, "updated_at", response["updated_at"])
+        now = datetime.utcnow()
 
-        return response
+        return {
+            "content_id": getattr(created, "content_id", content.content_id),
+            "student_id": created.student_id,
+            "subject_name": created.subject_name,
+            "class_level": created.class_level,
+            "content_series_id": created.content_series_id,
+            "topic_id": created.topic_id,
+            "content_type": created.content_type,
+            "title": created.title,
+            "content_text": created.content_text,
+            "student_question": created.student_question,
+            "ai_response": created.ai_response,
+            "simple_definition": created.simple_definition,
+            "official_definition": created.official_definition,
+            "media_url": created.media_url,
+            "gemini_file_ref": created.gemini_file_ref,
+            "question_type": created.question_type,
+            "answer_options": created.answer_options,
+            "correct_answer": created.correct_answer,
+            "worked_solution": created.worked_solution,
+            "content_data": created.content_data,
+            "version": created.version,
+            "gemini_file_uploaded_at": getattr(
+                created, "gemini_file_uploaded_at", None
+            ),
+            "created_at": getattr(created, "created_at", now),
+            "updated_at": getattr(created, "updated_at", now),
+        }
 
     async def get_content(self, content_id: UUID):
         return await self.content_repo.get_by_id(content_id)

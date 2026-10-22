@@ -4,13 +4,20 @@ import os
 from pathlib import Path
 from typing import Any
 
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
+
     def load_dotenv(*args, **kwargs):
         return False
+
 
 try:
     from google import genai
@@ -71,7 +78,7 @@ EVALUATION & FEEDBACK RULES:
 class AIService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
         if genai is None or types is None:
             raise RuntimeError(
@@ -123,7 +130,9 @@ class AIService:
         try:
             result = json.loads(response)
         except json.JSONDecodeError as exc:
-            raise RuntimeError("Gemini returned invalid JSON.") from exc
+            raise RuntimeError(
+                f"Gemini returned invalid JSON. Response was: {response}"
+            ) from exc
 
         if not isinstance(result, dict):
             raise RuntimeError("Gemini returned an invalid JSON object.")
@@ -149,8 +158,9 @@ class AIService:
                     )
                 )
 
-            chat = client.chats.create(
+            response = client.models.generate_content(
                 model=self.model_name,
+                contents=kwargs.get("input"),
                 config=types.GenerateContentConfig(
                     response_mime_type=mime_type,
                     tools=tools if tools else None,
@@ -160,43 +170,109 @@ class AIService:
                 ),
             )
 
-            return chat.send_message(kwargs.get("input"))
+            return response
         finally:
             client.close()
 
     async def _ask_gemini(self, **kwargs):
-        try:
-            return await asyncio.to_thread(self._create_interaction, **kwargs)
-        except (ServerError, RuntimeError, Exception) as exc:
-            from services.mock_ai_service import MockAIService
-            mock_service = MockAIService()
-            
-            prompt_input = kwargs.get("input", "")
-            subject = "Biology"
-            if "Subject: " in prompt_input:
-                try:
-                    subject = prompt_input.split("Subject: ")[1].split("\n")[0]
-                except Exception:
-                    pass
-            
-            class_level = "S1"
-            if "Class level: " in prompt_input:
-                try:
-                    class_level = prompt_input.split("Class level: ")[1].split("\n")[0]
-                except Exception:
-                    pass
+        use_mock = os.getenv("MOCK_AI", "false").lower() == "true"
 
-            mock_res = await mock_service.generate_tutor_response(
-                prompt=prompt_input,
-                subject_name=subject,
-                class_level=class_level
-            )
-            
-            class MockInteraction:
-                def __init__(self, text: str):
-                    self.text = text
+        if not use_mock:
+            try:
+                return await asyncio.to_thread(self._create_interaction, **kwargs)
+            except Exception as exc:
+                print(
+                    f"Gemini API error/quota exceeded ({exc}). Falling back to MockAIService..."
+                )
+        from services.mock_ai_service import MockAIService
 
-            return MockInteraction(mock_res["response"])
+        mock_service = MockAIService()
+
+        prompt_input = kwargs.get("input", "")
+        subject = "mathematics"
+        for subj in ["mathematics", "biology", "chemistry", "physics", "english"]:
+            if subj in prompt_input.casefold():
+                subject = subj
+                break
+
+        class_level = "S1"
+        if "Class level: S2" in prompt_input:
+            class_level = "S2"
+
+        mock_res = await mock_service.generate_tutor_response(
+            prompt=prompt_input, subject_name=subject, class_level=class_level
+        )
+
+        response_text = mock_res.get("response", "Mock tutor response.")
+
+        if kwargs.get("is_json"):
+            if (
+                "questions" in prompt_input.lower()
+                or "assessment" in prompt_input.lower()
+            ):
+                response_text = json.dumps(
+                    {
+                        "questions": [
+                            {
+                                "question_id": "q1",
+                                "question_type": "multiple_choice",
+                                "question_text": f"What is a core concept in {subject} ({class_level})?",
+                                "options": [
+                                    "Option A",
+                                    "Option B",
+                                    "Option C",
+                                    "Option D",
+                                ],
+                                "correct_answer": "Option A",
+                                "rubric_criteria": "Understanding basic principles",
+                                "points": 1,
+                            },
+                            {
+                                "question_id": "q2",
+                                "question_type": "multiple_choice",
+                                "question_text": f"Solve a typical problem in {subject}.",
+                                "options": [
+                                    "Choice 1",
+                                    "Choice 2",
+                                    "Choice 3",
+                                    "Choice 4",
+                                ],
+                                "correct_answer": "Choice 1",
+                                "rubric_criteria": "Accurate problem solving",
+                                "points": 1,
+                            },
+                        ]
+                    }
+                )
+            elif (
+                "dictionary" in prompt_input.lower()
+                or "definition" in prompt_input.lower()
+            ):
+                response_text = json.dumps(
+                    {
+                        "word": "query",
+                        "phonetic": "/ˈkwɪri/",
+                        "partOfSpeech": "noun",
+                        "definition": response_text,
+                        "example": "This is a mock dictionary example.",
+                    }
+                )
+            else:
+                response_text = json.dumps(
+                    {
+                        "corrections": [],
+                        "recommendations": [
+                            {"topic": "Review Chapter 1", "reason": response_text}
+                        ],
+                        "identified_gaps": [],
+                    }
+                )
+
+        class MockInteraction:
+            def __init__(self, text: str):
+                self.text = text
+
+        return MockInteraction(response_text)
 
     async def search_dictionary(self, query: str) -> dict:
         prompt = (

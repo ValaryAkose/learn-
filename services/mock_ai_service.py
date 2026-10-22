@@ -80,14 +80,18 @@ class MockAIService:
                 text = path.read_text(encoding="utf-8")
             except OSError:
                 continue
-            
+
             # Split by paragraphs to capture full context/definitions instead of isolated single lines
             paragraphs = text.split("\n\n")
             for para in paragraphs:
-                cleaned_para = " ".join(line.strip() for line in para.splitlines() if line.strip() and not self._is_noise(line.strip()))
+                cleaned_para = " ".join(
+                    line.strip()
+                    for line in para.splitlines()
+                    if line.strip() and not self._is_noise(line.strip())
+                )
                 if not cleaned_para or len(cleaned_para) < 30:
                     continue
-                
+
                 key = cleaned_para.lower()
                 if key in seen:
                     continue

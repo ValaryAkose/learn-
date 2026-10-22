@@ -18,7 +18,6 @@ def main() -> None:
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is missing.")
 
-    # Reuse the saved store reference if one already exists.
     if STORE_CONFIG.exists():
         saved = json.loads(STORE_CONFIG.read_text(encoding="utf-8"))
         store_name = saved.get("name")
