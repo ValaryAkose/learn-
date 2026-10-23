@@ -84,29 +84,30 @@ def list_users(
 @router.get("/{user_id}", response_model=UserPublic)
 def get_user(
     user_id: UUID,
-    admin=Depends(require_admin),
+    current_user=Depends(get_current_user),
     service: UserService = Depends(get_service),
 ):
-    return service.get_user(user_id)
+    return service.get_user_with_access_check(current_user, user_id)
 
 
 @router.patch("/{user_id}", response_model=UserPublic)
 def update_user(
     user_id: UUID,
     payload: UserUpdate,
-    admin=Depends(require_admin),
+    current_user=Depends(get_current_user),
     service: UserService = Depends(get_service),
 ):
     values = payload.model_dump(mode="json", exclude_unset=True)
-    return service.update_user(user_id, values)
+    return service.update_user_with_access_check(current_user, user_id, values)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: UUID,
-    admin=Depends(require_admin),
+    current_user=Depends(get_current_user),
     service: UserService = Depends(get_service),
 ):
+    service.require_self_or_admin_access(current_user, user_id)
     service.delete_user(user_id)
 
 

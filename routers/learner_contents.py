@@ -57,7 +57,7 @@ def get_student_progress_summary(
 ):
     try:
         if getattr(current_user, "role", None) != "admin" and str(
-            getattr(current_user, "id", student_id)
+            getattr(current_user, "user_id", student_id)
         ) != str(student_id):
             raise HTTPException(
                 status_code=403, detail="Not authorized to view this summary"
@@ -111,7 +111,7 @@ async def generate_practice_questions(
         )
 
         assessment_record = LearnerAssessment(
-            student_id=current_user.id,
+            student_id=current_user.user_id,
             subject_name=data.subject_name,
             class_level=data.class_level,
             assessment_type="practice",
@@ -145,7 +145,7 @@ async def evaluate_practice_submission(
         )
 
         evaluation_record = LearnerAssessment(
-            student_id=current_user.id,
+            student_id=current_user.user_id,
             subject_name=data.subject_name,
             score=result.get("score"),
             questions=data.questions,
@@ -254,7 +254,7 @@ async def delete_learning_content(
 
     is_admin = getattr(current_user, "role", None) == "admin"
     owner_id = getattr(content, "user_id", getattr(content, "student_id", None))
-    is_owner = owner_id and str(owner_id) == str(current_user.id)
+    is_owner = owner_id and str(owner_id) == str(current_user.user_id)
 
     if not is_admin and not is_owner:
         raise HTTPException(
