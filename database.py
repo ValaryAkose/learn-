@@ -15,7 +15,8 @@ class Base(DeclarativeBase):
 
 
 def _database_url() -> str:
-    url = os.getenv("DATABASE_URL")
+
+    url = os.environ.get("DATABASE_URL")
 
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
@@ -28,7 +29,15 @@ def _database_url() -> str:
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(_database_url(), pool_pre_ping=True)
+    url = _database_url()
+
+    # If using an in-memory or file-based SQLite database, disable the same-thread check
+    if url.startswith("sqlite"):
+        return create_engine(
+            url, pool_pre_ping=True, connect_args={"check_same_thread": False}
+        )
+
+    return create_engine(url, pool_pre_ping=True)
 
 
 @lru_cache
