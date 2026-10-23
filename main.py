@@ -2,10 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from core.exceptions import AppError
+from core.security import InvalidToken
 from routers.ai_tutor_interactions import router as ai_tutor_interactions_router
 from routers.offline_package import router as offline_package_router
 from routers.sync_event import router as sync_event_router
 from routers.learner_contents import router as learner_contents_router
+from routers.user import router as user_router
 from routers.topic import router as topic_router
 
 
@@ -23,10 +25,22 @@ async def app_error_handler(
     )
 
 
+@app.exception_handler(InvalidToken)
+async def invalid_token_handler(
+    request: Request,
+    exc: InvalidToken,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content={"detail": "Invalid or expired access token"},
+    )
+
+
 app.include_router(ai_tutor_interactions_router)
 app.include_router(offline_package_router, prefix="/api/v1")
 app.include_router(sync_event_router, prefix="/api/v1")
 app.include_router(learner_contents_router, prefix="/api/v1")
+app.include_router(user_router, prefix="/api/v1")
 app.include_router(topic_router, prefix="/api/v1")
 
 

@@ -111,6 +111,7 @@ async def generate_practice_questions(
         )
 
         assessment_record = LearnerAssessment(
+            student_id=current_user.id,
             subject_name=data.subject_name,
             class_level=data.class_level,
             assessment_type="practice",
@@ -144,6 +145,7 @@ async def evaluate_practice_submission(
         )
 
         evaluation_record = LearnerAssessment(
+            student_id=current_user.id,
             subject_name=data.subject_name,
             score=result.get("score"),
             questions=data.questions,
@@ -246,10 +248,18 @@ async def delete_learning_content(
     service: LearningContentService = Depends(get_learning_service),
     current_user: User = Depends(get_current_active_user),
 ):
-    if getattr(current_user, "role", None) != "admin":
+    content = await service.content_repo.get_by_id(content_id)
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    is_admin = getattr(current_user, "role", None) == "admin"
+    owner_id = getattr(content, "user_id", getattr(content, "student_id", None))
+    is_owner = owner_id and str(owner_id) == str(current_user.id)
+
+    if not is_admin and not is_owner:
         raise HTTPException(
             status_code=403,
-            detail="Administrator permissions required to delete content",
+            detail="Not authorized to delete this content",
         )
 
     if not await service.content_repo.delete(content_id):

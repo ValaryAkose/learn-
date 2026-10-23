@@ -206,8 +206,17 @@ class LearningContentService:
             "progress_percentage": 30,
         }
 
-    async def create_content(self, data: LearningContentCreate):
-        content = LearningContent(**data.model_dump())
+    async def create_content(self, data: LearningContentCreate, user_id: UUID | None = None):
+        content_data = data.model_dump()
+        if user_id is not None:
+            content_data["student_id"] = user_id
+
+        content = LearningContent(**content_data)
+        if getattr(content, "content_id", None) is None:
+            content.content_id = uuid4()
+        if getattr(content, "version", None) is None:
+            content.version = 1
+
         return await self.content_repo.create(content)
 
     async def _resolve_topic_id(
