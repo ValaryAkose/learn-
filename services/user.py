@@ -197,6 +197,8 @@ class UserService:
         if not self.is_admin(current_user) and "role" in values:
             values.pop("role")
 
+        return self.update_user(target_user_id, values)
+
     def make_recovery_token(self) -> tuple[str, str]:
         raw = new_recovery_token()
         return raw, recovery_token_digest(raw, self.recovery_pepper)

@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.enums import ContentType, QuestionType
+from core.enums import ClassLevel, ContentType, QuestionType, SubjectName
 from database import Base
 
 
@@ -27,7 +27,22 @@ class LearningContent(Base):
         default=uuid4,
     )
 
-    content_series_id: Mapped[UUID] = mapped_column(
+    student_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        nullable=True,
+    )
+
+    subject_name: Mapped[SubjectName | None] = mapped_column(
+        SQLEnum(SubjectName, name="subject_name"),
+        nullable=True,
+    )
+
+    class_level: Mapped[ClassLevel | None] = mapped_column(
+        SQLEnum(ClassLevel, name="class_level"),
+        nullable=True,
+    )
+
+    content_series_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         nullable=False,
         default=uuid4,
@@ -52,6 +67,16 @@ class LearningContent(Base):
     content_text: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+    student_question: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    ai_response: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
 
     simple_definition: Mapped[str | None] = mapped_column(
