@@ -206,7 +206,9 @@ class LearningContentService:
             "progress_percentage": 30,
         }
 
-    async def create_content(self, data: LearningContentCreate, user_id: UUID | None = None):
+    async def create_content(
+        self, data: LearningContentCreate, user_id: UUID | None = None
+    ):
         content_data = data.model_dump()
         if user_id is not None:
             content_data["student_id"] = user_id

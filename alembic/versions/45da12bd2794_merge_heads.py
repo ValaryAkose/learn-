@@ -5,15 +5,17 @@ Revises: 0f41038567fd, 9d51fb5d6cd0, bdf98ef1db4f
 Create Date: 2026-10-23 14:22:42.063792
 
 """
-from typing import Sequence, Union
 
-from alembic import op
-import sqlalchemy as sa
+from typing import Sequence, Union
 
 
 # revision identifiers, used by Alembic.
-revision: str = '45da12bd2794'
-down_revision: Union[str, Sequence[str], None] = ('0f41038567fd', '9d51fb5d6cd0', 'bdf98ef1db4f')
+revision: str = "45da12bd2794"
+down_revision: Union[str, Sequence[str], None] = (
+    "0f41038567fd",
+    "9d51fb5d6cd0",
+    "bdf98ef1db4f",
+)
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
