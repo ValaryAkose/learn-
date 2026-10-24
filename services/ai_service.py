@@ -343,14 +343,24 @@ class AIService:
         class_level: Any,
         assessment_type: Any,
         topic_title: str | None = None,
+        lesson_context: str | None = None,
         question_count: int = 8,
+        **kwargs,
     ) -> list[dict]:
+        if lesson_context is None:
+            lesson_context = kwargs.get("lesson_context")
         question_count = int(question_count)
         if question_count < 1:
             raise ValueError("Question count must be greater than zero.")
 
         topic_instruction = (
             f"\nFocus on this topic: {topic_title}" if topic_title else ""
+        )
+        lesson_instruction = (
+            "\nUse the learner-selected lesson below strictly as the assessment scope:\n"
+            f"{lesson_context}\n"
+            if lesson_context
+            else ""
         )
 
         prompt = (
@@ -361,6 +371,7 @@ class AIService:
             f"Assessment type: {self._value(assessment_type)}\n"
             f"Question count limit: up to {question_count}\n"
             f"{topic_instruction}\n"
+            f"{lesson_instruction}\n"
             "CRITICAL REQUIREMENT: Do not invent or create your own questions. Select exact or matching questions verbatim/closely from the retrieved textbook exercises.\n"
             "Each question object must include question_id, question_type, question_text, options, correct_answer, rubric_criteria, and points.\n"
             "Multiple-choice questions must have four options. Other question types must have an empty options list.\n"
