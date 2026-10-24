@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from core.enums import AssessmentStatus, ContentType, ProgressStatus, SubjectName
+from core.enums import AssessmentStatus, ContentType, SubjectName
 from models.learner_assessment import LearnerAssessment
 from models.learning_content import LearningContent
 from models.topic import Topic
@@ -55,7 +55,9 @@ class LearnerAssessmentService:
                 topic = self.db.scalar(select(Topic).where(Topic.topic_id == topic_id))
                 if topic is None:
                     raise ValueError("Topic not found.")
-                return getattr(topic, "title", None) or getattr(topic, "topic_name", None)
+                return getattr(topic, "title", None) or getattr(
+                    topic, "topic_name", None
+                )
             except Exception:
                 pass
         return None
@@ -71,10 +73,15 @@ class LearnerAssessmentService:
                 )
                 if lesson is None:
                     raise ValueError("Lesson not found.")
-                topic = self.db.scalar(select(Topic).where(Topic.topic_id == lesson.topic_id))
+                topic = self.db.scalar(
+                    select(Topic).where(Topic.topic_id == lesson.topic_id)
+                )
                 if topic is None:
                     raise ValueError("The selected lesson has no curriculum topic.")
-                if getattr(topic, "subject_name") != subject_name or getattr(topic, "class_level") != class_level:
+                if (
+                    getattr(topic, "subject_name") != subject_name
+                    or getattr(topic, "class_level") != class_level
+                ):
                     raise ValueError(
                         "The selected lesson does not match this learner's subject and class."
                     )
@@ -126,7 +133,9 @@ class LearnerAssessmentService:
                 class_level=student.class_level,
                 assessment_type=data.assessment_type,
                 topic_title=topic_title,
-                lesson_context=getattr(lesson, "content_text", None) if lesson is not None else None,
+                lesson_context=getattr(lesson, "content_text", None)
+                if lesson is not None
+                else None,
                 question_count=getattr(data, "question_count", 8),
             )
         except TypeError:
@@ -166,7 +175,9 @@ class LearnerAssessmentService:
             answers=[],
         )
         try:
-            assessment.target_duration_seconds = getattr(data, "target_duration_seconds", None)
+            assessment.target_duration_seconds = getattr(
+                data, "target_duration_seconds", None
+            )
         except Exception:
             pass
 
@@ -269,16 +280,35 @@ class LearnerAssessmentService:
         if lesson_context is None:
             lesson_context = kwargs.get("lesson_context")
         # Delegate to AI service with compatibility
-        return await self.generate_assessment(
-            subject_name=subject_name,
-            class_level=class_level,
-            assessment_type=assessment_type,
-            topic_title=topic_title,
-            question_count=question_count,
-        ) if False else await self._ai_generate_assessment(subject_name, class_level, assessment_type, topic_title, lesson_context, question_count)
+        return (
+            await self.generate_assessment(
+                subject_name=subject_name,
+                class_level=class_level,
+                assessment_type=assessment_type,
+                topic_title=topic_title,
+                question_count=question_count,
+            )
+            if False
+            else await self._ai_generate_assessment(
+                subject_name,
+                class_level,
+                assessment_type,
+                topic_title,
+                lesson_context,
+                question_count,
+            )
+        )
 
-    async def _ai_generate_assessment(self, subject_name, class_level, assessment_type, topic_title, lesson_context, question_count):
-        if hasattr(self.ai_service, 'generate_assessment'):
+    async def _ai_generate_assessment(
+        self,
+        subject_name,
+        class_level,
+        assessment_type,
+        topic_title,
+        lesson_context,
+        question_count,
+    ):
+        if hasattr(self.ai_service, "generate_assessment"):
             try:
                 return await self.ai_service.generate_assessment(
                     subject_name=subject_name,
@@ -422,7 +452,9 @@ class LearnerAssessmentService:
                     questions=assessment.question_snapshot,
                     student_answers=submit_data.answers,
                     subject_name=assessment.subject_name,
-                    class_level=(await self._get_student(assessment.student_id)).class_level,
+                    class_level=(
+                        await self._get_student(assessment.student_id)
+                    ).class_level,
                     topic_title=await self._get_topic_title(assessment.topic_id),
                     actual_duration_seconds=actual_duration,
                     target_duration_seconds=assessment.target_duration_seconds,
