@@ -466,7 +466,12 @@ class AIService:
         )
 
         interaction = await self._ask_gemini(input=prompt, is_json=True)
-        response = (getattr(interaction, "text", None) or "").strip()
+        response = (
+            getattr(interaction, "text", None)
+            or getattr(interaction, "output_text", None)
+            or getattr(interaction, "content", None)
+            or ""
+        ).strip()
 
         if not response:
             raise RuntimeError("Gemini returned an empty evaluation response.")
