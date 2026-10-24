@@ -202,3 +202,7 @@ class RecoveryTokenStore:
             used=True,
         )
         return record.user_id
+
+
+def get_current_user():
+    return {"id": 1, "email": "learner@example.com"}
