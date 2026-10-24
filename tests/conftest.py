@@ -45,9 +45,6 @@ def init_test_schema():
 
     yield
 
-    if engine:
-        Base.metadata.drop_all(bind=engine)
-
 
 @pytest.fixture(scope="session")
 def model_classes():

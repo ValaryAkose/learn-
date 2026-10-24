@@ -35,7 +35,6 @@ app.include_router(learner_contents_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(topic_router, prefix="/api/v1")
 app.include_router(learner_lesson_progress_router, prefix="/api/v1")
-app.include_router(topic_router, prefix="/api/v1")
 app.include_router(learner_progress_router, prefix="/api/v1")
 
 

@@ -1,4 +1,6 @@
 from uuid import UUID
+
+from core.exceptions import BadRequestError, NotFoundError
 from repositories.learner_progress_repository import LearnerProgressRepository
 from models.learner_progress import LearnerProgress
 from schemas.learners_progress import LearnerProgressCreate, LearnerProgressUpdate
@@ -9,15 +11,20 @@ class LearnerProgressService:
         self.repository = repository
 
     def get_progress(self, student_id: UUID) -> list[LearnerProgress]:
-        return self.repository.get_student_progress(student_id)
+        progress = self.repository.get_student_progress(student_id)
+        if not progress:
+            raise NotFoundError("Progress not found")
+        return progress
 
     def create_progress(self, payload: LearnerProgressCreate) -> LearnerProgress:
-        progress = self.repository.get_or_create(
-            student_id=payload.student_id,
-            topic_id=payload.topic_id,
-            subject_name=payload.subject_name,
-        )
-        return progress
+        try:
+            return self.repository.get_or_create(
+                student_id=payload.student_id,
+                topic_id=payload.topic_id,
+                subject_name=payload.subject_name,
+            )
+        except Exception as exc:
+            raise BadRequestError(str(exc)) from exc
 
     def list_all_progress(
         self, skip: int = 0, limit: int = 100
@@ -39,18 +46,3 @@ class LearnerProgressService:
         if update.recommendation_reason is not None:
             progress.recommendation_reason = update.recommendation_reason
         return self.repository.update(progress)
-
-    def get_offline_package(self, student_id: UUID):
-        progress = self.repository.get_student_progress(student_id)
-        if not progress:
-            return None
-        return {"student_id": str(student_id), "items": []}
-
-    def get_admin_dashboard(self):
-        all_progress = self.repository.list_all(skip=0, limit=1000)
-        if not all_progress:
-            return None
-        return {
-            "total_learners": len(set(p.student_id for p in all_progress)),
-            "total_progress_records": len(all_progress),
-        }

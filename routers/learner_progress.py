@@ -1,5 +1,6 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -14,8 +15,7 @@ router = APIRouter(prefix="/progress", tags=["learner_progress"])
 
 
 def get_service(db: Session = Depends(get_db)) -> LearnerProgressService:
-    repo = LearnerProgressRepository(db)
-    return LearnerProgressService(repo)
+    return LearnerProgressService(LearnerProgressRepository(db))
 
 
 @router.post(
@@ -25,11 +25,7 @@ def create_learner_progress(
     payload: LearnerProgressCreate,
     service: LearnerProgressService = Depends(get_service),
 ):
-    try:
-        progress = service.create_progress(payload)
-        return progress
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    return service.create_progress(payload)
 
 
 @router.get("/", response_model=list[LearnerProgressResponse])
@@ -46,7 +42,4 @@ def get_student_progress(
     student_id: UUID,
     service: LearnerProgressService = Depends(get_service),
 ):
-    progress = service.get_progress(student_id)
-    if not progress:
-        raise HTTPException(status_code=404, detail="Progress not found")
-    return progress
+    return service.get_progress(student_id)

@@ -60,12 +60,13 @@ def test_get_unknown_topic_returns_404(client):
 
 def test_update_topic(client):
     topic = create_topic(client)
+    new_title = f"Renamed-{uuid.uuid4().hex[:6]}"
     response = client.patch(
         f"{BASE}/{topic['topic_id']}",
-        json={"title": "Renamed", "description": "New text"},
+        json={"title": new_title, "description": "New text"},
     )
     assert response.status_code == 200
-    assert response.json()["title"] == "Renamed"
+    assert response.json()["title"] == new_title
     assert response.json()["description"] == "New text"
 
 
