@@ -10,7 +10,6 @@ from core.security import InvalidToken
 from routers.ai_tutor_interactions import router as ai_tutor_interactions_router
 from routers.learner_lesson_progress import router as learner_lesson_progress_router
 from routers.offline_package import router as offline_package_router
-from routers.sync_event import router as sync_event_router
 from routers.learner_contents import router as learner_contents_router
 from routers.user import router as user_router
 from routers.topic import router as topic_router
