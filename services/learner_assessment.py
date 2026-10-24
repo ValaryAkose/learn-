@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 
-from core.enums import AssessmentStatus, ContentType, SubjectName
+from core.enums import AssessmentStatus, ClassLevel, ContentType, SubjectName
 from models.learner_assessment import LearnerAssessment
 from models.learning_content import LearningContent
 from models.topic import Topic
@@ -25,7 +26,6 @@ class LearnerAssessmentService:
         progress_repo=None,
         ai_service: AIService = None,
     ):
-        # Support both old and new signatures
         if isinstance(progress_repo, AIService) and ai_service is None:
             ai_service = progress_repo
             progress_repo = None
@@ -35,181 +35,21 @@ class LearnerAssessmentService:
         self.db = getattr(assessment_repo, "db", None)
 
     async def _get_student(self, student_id: UUID):
-        if hasattr(self, "db") and self.db is not None:
-            try:
-                student = self.db.scalar(select(User).where(User.user_id == student_id))
-                if student is None:
-                    raise ValueError("Student not found.")
-                if getattr(student, "class_level") is None:
-                    raise ValueError("The student's class level is not configured.")
-                return student
-            except Exception:
-                pass
-        return SimpleNamespace(class_level=ClassLevel.S1)
+        if self.db is None:
+            return SimpleNamespace(class_level=ClassLevel.S1)
 
-    async def _get_topic_title(self, topic_id: UUID | None):
-        if topic_id is None:
-            return None
-        if hasattr(self, "db") and self.db is not None:
-            try:
-                topic = self.db.scalar(select(Topic).where(Topic.topic_id == topic_id))
-                if topic is None:
-                    raise ValueError("Topic not found.")
-                return getattr(topic, "title", None) or getattr(
-                    topic, "topic_name", None
-                )
-            except Exception:
-                pass
-        return None
-
-    async def _get_selected_lesson(self, content_id: UUID, subject_name, class_level):
-        if hasattr(self, "db") and self.db is not None:
-            try:
-                lesson = self.db.scalar(
-                    select(LearningContent).where(
-                        LearningContent.content_id == content_id,
-                        LearningContent.content_type == ContentType.LESSON,
-                    )
-                )
-                if lesson is None:
-                    raise ValueError("Lesson not found.")
-                topic = self.db.scalar(
-                    select(Topic).where(Topic.topic_id == lesson.topic_id)
-                )
-                if topic is None:
-                    raise ValueError("The selected lesson has no curriculum topic.")
-                if (
-                    getattr(topic, "subject_name") != subject_name
-                    or getattr(topic, "class_level") != class_level
-                ):
-                    raise ValueError(
-                        "The selected lesson does not match this learner's subject and class."
-                    )
-                return lesson
-            except Exception as e:
-                raise e
-        raise ValueError("Lesson not found.")
-
-    async def start_assessment(
-        self,
-        data: LearnerAssessmentCreate,
-    ) -> LearnerAssessment:
-        # Idempotency
-        try:
-            existing = self.assessment_repo.get_by_client_attempt(
-                data.student_id,
-                data.client_attempt_id,
-            )
-            if existing is not None:
-                return existing
-        except Exception:
-            pass
-
-        student = await self._get_student(data.student_id)
-        subject_name = SubjectName(data.subject_name)
-        topic_id = data.topic_id
-        lesson = None
-        if getattr(data, "content_id", None) is not None:
-            try:
-                lesson = await self._get_selected_lesson(
-                    data.content_id,
-                    subject_name,
-                    student.class_level,
-                )
-                if topic_id is not None and getattr(lesson, "topic_id") != topic_id:
-                    raise ValueError(
-                        "The selected lesson does not match the requested topic."
-                    )
-                topic_id = getattr(lesson, "topic_id")
-                topic_title = getattr(lesson, "title", None)
-            except Exception as e:
-                raise e
-        else:
-            topic_title = await self._get_topic_title(topic_id)
-
-        try:
-            questions = await self.ai_service.generate_assessment(
-                subject_name=subject_name,
-                class_level=student.class_level,
-                assessment_type=data.assessment_type,
-                topic_title=topic_title,
-                lesson_context=getattr(lesson, "content_text", None)
-                if lesson is not None
-                else None,
-                question_count=getattr(data, "question_count", 8),
-            )
-        except TypeError:
-            questions = await self.ai_service.generate_assessment(
-                subject_name=subject_name,
-                class_level=student.class_level,
-                assessment_type=data.assessment_type,
-                topic_title=topic_title,
-                question_count=getattr(data, "question_count", 8),
-            )
-
-        if not isinstance(questions, list) or not questions:
-            raise ValueError(
-                "No valid assessment questions are available for this request."
-            )
-
-        try:
-            attempt_number = self.assessment_repo.get_latest_attempt_number(
-                student_id=data.student_id,
-                subject_name=subject_name,
-                assessment_type=data.assessment_type,
-                topic_id=topic_id,
-            )
-        except Exception:
-            attempt_number = 1
-
-        assessment = LearnerAssessment(
-            student_id=data.student_id,
-            topic_id=topic_id,
-            client_attempt_id=data.client_attempt_id,
-            assessment_type=data.assessment_type,
-            assessment_version=1,
-            attempt_number=attempt_number,
-            subject_name=subject_name,
-            status=AssessmentStatus.IN_PROGRESS,
-            question_snapshot=questions,
-            answers=[],
-        )
-        try:
-            assessment.target_duration_seconds = getattr(
-                data, "target_duration_seconds", None
-            )
-        except Exception:
-            pass
-
-        if lesson is not None:
-            for question in assessment.question_snapshot:
-                try:
-                    question["source_lesson"] = {
-                        "content_id": str(lesson.content_id),
-                        "title": lesson.title,
-                    }
-                except Exception:
-                    pass
-
-        try:
-            return self.assessment_repo.create(assessment)
-        except Exception:
-            raise
         student = self.db.scalar(select(User).where(User.user_id == student_id))
 
         if student is None:
             raise ValueError("Student not found.")
 
-        if student.class_level is None:
+        if getattr(student, "class_level", None) is None:
             raise ValueError("The student's class level is not configured.")
 
         return student
 
-    async def _get_topic_title(
-        self,
-        topic_id: UUID | None,
-    ) -> str | None:
-        if topic_id is None:
+    async def _get_topic_title(self, topic_id: UUID | None) -> str | None:
+        if topic_id is None or self.db is None:
             return None
 
         topic = self.db.scalar(select(Topic).where(Topic.topic_id == topic_id))
@@ -225,6 +65,9 @@ class LearnerAssessmentService:
         subject_name: SubjectName,
         class_level,
     ) -> LearningContent:
+        if self.db is None:
+            raise ValueError("Lesson not found.")
+
         lesson = self.db.scalar(
             select(LearningContent).where(
                 LearningContent.content_id == content_id,
@@ -248,9 +91,7 @@ class LearnerAssessmentService:
         return lesson
 
     @staticmethod
-    def _normalise_answers(
-        answers: dict,
-    ) -> list[dict]:
+    def _normalise_answers(answers: dict) -> list[dict]:
         normalised = []
 
         for question_id, answer in answers.items():
@@ -277,26 +118,13 @@ class LearnerAssessmentService:
         question_count: int = 8,
         **kwargs,
     ) -> list[dict]:
-        if lesson_context is None:
-            lesson_context = kwargs.get("lesson_context")
-        # Delegate to AI service with compatibility
-        return (
-            await self.generate_assessment(
-                subject_name=subject_name,
-                class_level=class_level,
-                assessment_type=assessment_type,
-                topic_title=topic_title,
-                question_count=question_count,
-            )
-            if False
-            else await self._ai_generate_assessment(
-                subject_name,
-                class_level,
-                assessment_type,
-                topic_title,
-                lesson_context,
-                question_count,
-            )
+        return await self._ai_generate_assessment(
+            subject_name,
+            class_level,
+            assessment_type,
+            topic_title,
+            lesson_context,
+            question_count,
         )
 
     async def _ai_generate_assessment(
@@ -308,30 +136,38 @@ class LearnerAssessmentService:
         lesson_context,
         question_count,
     ):
-        if hasattr(self.ai_service, "generate_assessment"):
-            try:
-                return await self.ai_service.generate_assessment(
-                    subject_name=subject_name,
-                    class_level=class_level,
-                    assessment_type=assessment_type,
-                    topic_title=topic_title,
-                    lesson_context=lesson_context,
-                    question_count=question_count,
-                )
-            except TypeError:
-                return await self.ai_service.generate_assessment(
-                    subject_name=subject_name,
-                    class_level=class_level,
-                    assessment_type=assessment_type,
-                    topic_title=topic_title,
-                    question_count=question_count,
-                )
-        raise RuntimeError("No AI service")
-        # Return the existing attempt if the client retries the same request.
-        existing = self.assessment_repo.get_by_client_attempt(
-            data.student_id,
-            data.client_attempt_id,
-        )
+        if not hasattr(self.ai_service, "generate_assessment"):
+            raise RuntimeError("No AI service is configured.")
+
+        try:
+            return await self.ai_service.generate_assessment(
+                subject_name=subject_name,
+                class_level=class_level,
+                assessment_type=assessment_type,
+                topic_title=topic_title,
+                lesson_context=lesson_context,
+                question_count=question_count,
+            )
+        except TypeError:
+            return await self.ai_service.generate_assessment(
+                subject_name=subject_name,
+                class_level=class_level,
+                assessment_type=assessment_type,
+                topic_title=topic_title,
+                question_count=question_count,
+            )
+
+    async def start_assessment(
+        self,
+        data: LearnerAssessmentCreate,
+    ) -> LearnerAssessment:
+        try:
+            existing = self.assessment_repo.get_by_client_attempt(
+                data.student_id,
+                data.client_attempt_id,
+            )
+        except AttributeError:
+            existing = None
 
         if existing is not None:
             return existing
@@ -341,7 +177,7 @@ class LearnerAssessmentService:
         topic_id = data.topic_id
         lesson = None
 
-        if data.content_id is not None:
+        if getattr(data, "content_id", None) is not None:
             lesson = await self._get_selected_lesson(
                 data.content_id,
                 subject_name,
@@ -359,12 +195,12 @@ class LearnerAssessmentService:
             topic_title = await self._get_topic_title(topic_id)
 
         questions = await self._ai_generate_assessment(
-            subject_name=subject_name,
-            class_level=student.class_level,
-            assessment_type=data.assessment_type,
-            topic_title=topic_title,
-            lesson_context=lesson.content_text if lesson is not None else None,
-            question_count=data.question_count,
+            subject_name,
+            student.class_level,
+            data.assessment_type,
+            topic_title,
+            lesson.content_text if lesson is not None else None,
+            getattr(data, "question_count", 8),
         )
 
         if not isinstance(questions, list) or not questions:
@@ -372,12 +208,15 @@ class LearnerAssessmentService:
                 "No valid assessment questions are available for this request."
             )
 
-        attempt_number = self.assessment_repo.get_latest_attempt_number(
-            student_id=data.student_id,
-            subject_name=subject_name,
-            assessment_type=data.assessment_type,
-            topic_id=topic_id,
-        )
+        try:
+            attempt_number = self.assessment_repo.get_latest_attempt_number(
+                student_id=data.student_id,
+                subject_name=subject_name,
+                assessment_type=data.assessment_type,
+                topic_id=topic_id,
+            )
+        except AttributeError:
+            attempt_number = 1
 
         assessment = LearnerAssessment(
             student_id=data.student_id,
@@ -390,7 +229,7 @@ class LearnerAssessmentService:
             status=AssessmentStatus.IN_PROGRESS,
             question_snapshot=questions,
             answers=[],
-            target_duration_seconds=data.target_duration_seconds,
+            target_duration_seconds=getattr(data, "target_duration_seconds", None),
         )
 
         if lesson is not None:
@@ -415,8 +254,8 @@ class LearnerAssessmentService:
         if assessment.status != AssessmentStatus.IN_PROGRESS:
             raise ValueError("Only an in-progress assessment can be submitted.")
 
-        await self._get_student(assessment.student_id)
-        await self._get_topic_title(assessment.topic_id)
+        student = await self._get_student(assessment.student_id)
+        topic_title = await self._get_topic_title(assessment.topic_id)
 
         completed_at = datetime.now(timezone.utc)
         started_at = assessment.started_at
@@ -429,12 +268,9 @@ class LearnerAssessmentService:
             (completed_at - started_at).total_seconds(),
         )
 
-        # Store answers as normalized question/answer records.
         answers = self._normalise_answers(submit_data.answers)
 
-        # AIService defines evaluate_submission(), not evaluate_assessment().
-        # It expects the submitted answers dictionary keyed by question ID.
-        try:
+        if hasattr(self.ai_service, "evaluate_submission"):
             evaluation = await self.ai_service.evaluate_submission(
                 questions=assessment.question_snapshot,
                 student_answers=submit_data.answers,
@@ -446,26 +282,16 @@ class LearnerAssessmentService:
                     assessment.subject_name,
                 ),
             )
-        except Exception:
-            try:
-                evaluation = await self.ai_service.evaluate_assessment(
-                    questions=assessment.question_snapshot,
-                    student_answers=submit_data.answers,
-                    subject_name=assessment.subject_name,
-                    class_level=(
-                        await self._get_student(assessment.student_id)
-                    ).class_level,
-                    topic_title=await self._get_topic_title(assessment.topic_id),
-                    actual_duration_seconds=actual_duration,
-                    target_duration_seconds=assessment.target_duration_seconds,
-                )
-            except Exception:
-                evaluation = await self.ai_service.evaluate_submission(
-                    questions=assessment.question_snapshot,
-                    student_answers=submit_data.answers,
-                    actual_duration_seconds=int(actual_duration),
-                    target_duration_seconds=assessment.target_duration_seconds or 0,
-                )
+        else:
+            evaluation = await self.ai_service.evaluate_assessment(
+                questions=assessment.question_snapshot,
+                student_answers=submit_data.answers,
+                subject_name=assessment.subject_name,
+                class_level=student.class_level,
+                topic_title=topic_title,
+                actual_duration_seconds=actual_duration,
+                target_duration_seconds=assessment.target_duration_seconds,
+            )
 
         if not isinstance(evaluation, dict):
             raise ValueError("The AI evaluator returned an invalid result.")
