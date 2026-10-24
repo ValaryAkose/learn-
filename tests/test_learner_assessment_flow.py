@@ -91,7 +91,6 @@ def test_start_assessment_uses_the_selected_lesson_as_question_scope(monkeypatch
 
 
 def test_list_available_lessons_returns_selectable_content_records():
-    from routers.learner_assessment import list_available_lessons
 
     content_id = uuid4()
     topic_id = uuid4()
@@ -114,10 +113,9 @@ def test_list_available_lessons_returns_selectable_content_records():
         def execute(self, statement):
             return Result()
 
-    options = list_available_lessons(
-        subject_name=SubjectName.BIOLOGY,
-        class_level=ClassLevel.S1,
-        db=Database(),
+    service = LearnerAssessmentService(SimpleNamespace(db=Database()))
+    options = asyncio.run(
+        service.list_available_lessons(SubjectName.BIOLOGY, ClassLevel.S1)
     )
 
     assert len(options) == 1

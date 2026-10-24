@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from core.exceptions import ConflictError, NotFoundError
 from core.enums import AssessmentStatus, AssessmentType, ClassLevel, SubjectName
 from schemas.learner_assessment import LearnerAssessmentCreate, LearnerAssessmentSubmit
 from services.learner_assessment import LearnerAssessmentService
@@ -166,7 +167,7 @@ def test_submit_assessment_rejects_already_completed():
     assessment = _make_assessment(status=AssessmentStatus.COMPLETED)
     service, _ = _make_service(assessment=assessment)
 
-    with pytest.raises(ValueError, match="in-progress"):
+    with pytest.raises(ConflictError, match="in-progress"):
         asyncio.run(
             service.submit_assessment(
                 assessment.assessment_id,
@@ -178,7 +179,7 @@ def test_submit_assessment_rejects_already_completed():
 def test_submit_assessment_raises_for_missing_assessment():
     service, _ = _make_service()
 
-    with pytest.raises(ValueError, match="Assessment not found"):
+    with pytest.raises(NotFoundError, match="Assessment not found"):
         asyncio.run(
             service.submit_assessment(
                 uuid4(),

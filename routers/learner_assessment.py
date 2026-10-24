@@ -1,13 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from core.enums import ClassLevel, ContentType, SubjectName
+from core.enums import ClassLevel, SubjectName
 from database import get_db
-from models.learning_content import LearningContent
-from models.topic import Topic
 from repositories.learner_assessment import LearnerAssessmentRepository
 from schemas.learner_assessment import (
     LearnerAssessmentCreate,
@@ -58,9 +55,9 @@ async def submit_assessment(
 
 @router.get("/", response_model=list[LearnerAssessmentResponse])
 async def list_assessments(
-    student_id: UUID | None = Query(default=None),
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=100, ge=1, le=500),
+    student_id: UUID | None = None,
+    skip: int = 0,
+    limit: int = 100,
     service: LearnerAssessmentService = Depends(get_assessment_service),
 ):
     return await service.list_assessments(student_id, skip, limit)
@@ -72,40 +69,19 @@ async def list_assessments(
 )
 async def list_recent_results(
     student_id: UUID,
-    limit: int = Query(default=5, ge=1, le=50),
+    limit: int = 5,
     service: LearnerAssessmentService = Depends(get_assessment_service),
 ):
     return await service.list_recent_results(student_id, limit)
 
 
 @router.get("/lessons", response_model=list[LearnerLessonOption])
-def list_available_lessons(
+async def list_available_lessons(
     subject_name: SubjectName,
     class_level: ClassLevel,
-    db: Session = Depends(get_db),
-) -> list[LearnerLessonOption]:
-    statement = (
-        select(LearningContent, Topic)
-        .join(Topic, LearningContent.topic_id == Topic.topic_id)
-        .where(
-            LearningContent.content_type == ContentType.LESSON,
-            Topic.subject_name == subject_name,
-            Topic.class_level == class_level,
-            Topic.is_active.is_(True),
-        )
-        .order_by(LearningContent.title)
-    )
-    return [
-        LearnerLessonOption(
-            content_id=content.content_id,
-            topic_id=topic.topic_id,
-            title=content.title or "Untitled lesson",
-            subject_name=topic.subject_name,
-            class_level=topic.class_level,
-            simple_definition=content.simple_definition,
-        )
-        for content, topic in db.execute(statement).all()
-    ]
+    service: LearnerAssessmentService = Depends(get_assessment_service),
+):
+    return await service.list_available_lessons(subject_name, class_level)
 
 
 @router.get(

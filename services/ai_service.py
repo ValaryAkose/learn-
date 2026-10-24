@@ -150,12 +150,12 @@ class AIService:
             mime_type = "application/json" if kwargs.get("is_json") else "text/plain"
             tools = []
             if self.store_name and kwargs.get("use_file_search", True):
+                file_search_options = {"file_search_store_names": [self.store_name]}
+                for tool in kwargs.get("tools") or []:
+                    if tool.get("metadata_filter"):
+                        file_search_options["metadata_filter"] = tool["metadata_filter"]
                 tools.append(
-                    types.Tool(
-                        file_search=types.FileSearch(
-                            file_search_store_names=[self.store_name]
-                        )
-                    )
+                    types.Tool(file_search=types.FileSearch(**file_search_options))
                 )
 
             response = client.models.generate_content(
@@ -379,7 +379,20 @@ class AIService:
             'Return JSON in the format {"questions": [...]}'
         )
 
-        interaction = await self._ask_gemini(input=prompt, is_json=True)
+        metadata_filter = (
+            f'subject="{self._value(subject_name)}" '
+            f'AND class_level="{self._value(class_level)}"'
+        )
+        interaction = await self._ask_gemini(
+            input=prompt,
+            is_json=True,
+            tools=[
+                {
+                    "file_search_store_names": [self.store_name],
+                    "metadata_filter": metadata_filter,
+                }
+            ],
+        )
         response = (getattr(interaction, "text", None) or "").strip()
 
         if not response:

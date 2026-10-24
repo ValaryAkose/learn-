@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from core.enums import AssessmentStatus, ClassLevel, ContentType, SubjectName
+from core.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from models.learner_assessment import LearnerAssessment
 from models.learning_content import LearningContent
 from models.topic import Topic
@@ -15,6 +16,7 @@ from schemas.learner_assessment import (
     LearnerAssessmentCreate,
     LearnerAssessmentSubmit,
     LearnerAssessmentUpdate,
+    LearnerLessonOption,
 )
 from services.ai_service import AIService
 
@@ -41,10 +43,10 @@ class LearnerAssessmentService:
         student = self.db.scalar(select(User).where(User.user_id == student_id))
 
         if student is None:
-            raise ValueError("Student not found.")
+            raise NotFoundError("Student not found.")
 
         if getattr(student, "class_level", None) is None:
-            raise ValueError("The student's class level is not configured.")
+            raise BusinessRuleError("The student's class level is not configured.")
 
         return student
 
@@ -55,7 +57,7 @@ class LearnerAssessmentService:
         topic = self.db.scalar(select(Topic).where(Topic.topic_id == topic_id))
 
         if topic is None:
-            raise ValueError("Topic not found.")
+            raise NotFoundError("Topic not found.")
 
         return getattr(topic, "title", None) or getattr(topic, "topic_name", None)
 
@@ -66,7 +68,7 @@ class LearnerAssessmentService:
         class_level,
     ) -> LearningContent:
         if self.db is None:
-            raise ValueError("Lesson not found.")
+            raise NotFoundError("Lesson not found.")
 
         lesson = self.db.scalar(
             select(LearningContent).where(
@@ -76,15 +78,15 @@ class LearnerAssessmentService:
         )
 
         if lesson is None:
-            raise ValueError("Lesson not found.")
+            raise NotFoundError("Lesson not found.")
 
         topic = self.db.scalar(select(Topic).where(Topic.topic_id == lesson.topic_id))
 
         if topic is None:
-            raise ValueError("The selected lesson has no curriculum topic.")
+            raise BusinessRuleError("The selected lesson has no curriculum topic.")
 
         if topic.subject_name != subject_name or topic.class_level != class_level:
-            raise ValueError(
+            raise BusinessRuleError(
                 "The selected lesson does not match this learner's subject and class."
             )
 
@@ -107,6 +109,14 @@ class LearnerAssessmentService:
             normalised.append(item)
 
         return normalised
+
+    @staticmethod
+    def _validate_paging(skip: int, limit: int, max_limit: int) -> None:
+        if skip < 0:
+            raise BusinessRuleError("skip must be 0 or greater.")
+
+        if limit < 1 or limit > max_limit:
+            raise BusinessRuleError(f"limit must be between 1 and {max_limit}.")
 
     async def generate_assessment(
         self,
@@ -185,7 +195,7 @@ class LearnerAssessmentService:
             )
 
             if topic_id is not None and topic_id != lesson.topic_id:
-                raise ValueError(
+                raise BusinessRuleError(
                     "The selected lesson does not match the requested topic."
                 )
 
@@ -204,7 +214,7 @@ class LearnerAssessmentService:
         )
 
         if not isinstance(questions, list) or not questions:
-            raise ValueError(
+            raise BusinessRuleError(
                 "No valid assessment questions are available for this request."
             )
 
@@ -249,10 +259,10 @@ class LearnerAssessmentService:
         assessment = self.assessment_repo.get_by_id(assessment_id)
 
         if assessment is None:
-            raise ValueError("Assessment not found.")
+            raise NotFoundError("Assessment not found.")
 
         if assessment.status != AssessmentStatus.IN_PROGRESS:
-            raise ValueError("Only an in-progress assessment can be submitted.")
+            raise ConflictError("Only an in-progress assessment can be submitted.")
 
         student = await self._get_student(assessment.student_id)
         topic_title = await self._get_topic_title(assessment.topic_id)
@@ -294,7 +304,7 @@ class LearnerAssessmentService:
             )
 
         if not isinstance(evaluation, dict):
-            raise ValueError("The AI evaluator returned an invalid result.")
+            raise BusinessRuleError("The AI evaluator returned an invalid result.")
 
         accuracy = evaluation.get("accuracy_percentage")
         speed = evaluation.get("speed_percentage")
@@ -302,12 +312,12 @@ class LearnerAssessmentService:
         if accuracy is not None:
             accuracy = float(accuracy)
             if not 0 <= accuracy <= 100:
-                raise ValueError("Invalid accuracy percentage from evaluator.")
+                raise BusinessRuleError("Invalid accuracy percentage from evaluator.")
 
         if speed is not None:
             speed = float(speed)
             if not 0 <= speed <= 100:
-                raise ValueError("Invalid speed percentage from evaluator.")
+                raise BusinessRuleError("Invalid speed percentage from evaluator.")
 
         assessment.answers = answers
         assessment.actual_duration_seconds = actual_duration
@@ -336,6 +346,8 @@ class LearnerAssessmentService:
         skip: int = 0,
         limit: int = 100,
     ) -> list[LearnerAssessment]:
+        self._validate_paging(skip, limit, 500)
+
         if student_id is not None:
             return self.assessment_repo.list_by_student(
                 student_id=student_id,
@@ -353,29 +365,68 @@ class LearnerAssessmentService:
         student_id: UUID,
         limit: int = 5,
     ) -> list[LearnerAssessment]:
+        self._validate_paging(0, limit, 50)
+
         return self.assessment_repo.list_recent_completed(
             student_id=student_id,
             limit=limit,
         )
 
+    async def list_available_lessons(
+        self,
+        subject_name: SubjectName,
+        class_level: ClassLevel,
+    ) -> list[LearnerLessonOption]:
+        if self.db is None:
+            return []
+
+        statement = (
+            select(LearningContent, Topic)
+            .join(Topic, LearningContent.topic_id == Topic.topic_id)
+            .where(
+                LearningContent.content_type == ContentType.LESSON,
+                Topic.subject_name == subject_name,
+                Topic.class_level == class_level,
+                Topic.is_active.is_(True),
+            )
+            .order_by(LearningContent.title)
+        )
+
+        return [
+            LearnerLessonOption(
+                content_id=content.content_id,
+                topic_id=topic.topic_id,
+                title=content.title or "Untitled lesson",
+                subject_name=topic.subject_name,
+                class_level=topic.class_level,
+                simple_definition=content.simple_definition,
+            )
+            for content, topic in self.db.execute(statement).all()
+        ]
+
     async def get_assessment(
         self,
         assessment_id: UUID,
-    ) -> LearnerAssessment | None:
-        return self.assessment_repo.get_by_id(assessment_id)
+    ) -> LearnerAssessment:
+        assessment = self.assessment_repo.get_by_id(assessment_id)
+
+        if assessment is None:
+            raise NotFoundError("Assessment not found.")
+
+        return assessment
 
     async def update_assessment(
         self,
         assessment_id: UUID,
         data: LearnerAssessmentUpdate,
-    ) -> LearnerAssessment | None:
+    ) -> LearnerAssessment:
         assessment = self.assessment_repo.get_by_id(assessment_id)
 
         if assessment is None:
-            return None
+            raise NotFoundError("Assessment not found.")
 
         if assessment.status == AssessmentStatus.COMPLETED:
-            raise ValueError("Completed assessments cannot be edited.")
+            raise ConflictError("Completed assessments cannot be edited.")
 
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(assessment, field, value)

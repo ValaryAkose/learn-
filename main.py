@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from core.exceptions import AppError
 from core.security import InvalidToken
@@ -12,6 +15,14 @@ from routers.topic import router as topic_router
 
 
 app = FastAPI(title="Redu", version="0.1.0")
+
+CURRICULUM_DIR = Path(__file__).resolve().parent / "curriculum"
+
+app.mount(
+    "/curriculum",
+    StaticFiles(directory=CURRICULUM_DIR, check_dir=False),
+    name="curriculum",
+)
 
 
 @app.exception_handler(AppError)

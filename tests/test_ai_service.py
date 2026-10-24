@@ -26,9 +26,7 @@ def test_generate_assessment_uses_scoped_file_search_and_validates_questions(
 
     async def fake_ask_gemini(**kwargs):
         calls.append(kwargs)
-        return SimpleNamespace(
-            output_text=json.dumps({"questions": [expected_question]})
-        )
+        return SimpleNamespace(text=json.dumps({"questions": [expected_question]}))
 
     monkeypatch.setattr(service, "_ask_gemini", fake_ask_gemini)
 
@@ -44,7 +42,10 @@ def test_generate_assessment_uses_scoped_file_search_and_validates_questions(
     )
 
     assert questions == [expected_question]
-    assert calls[0]["tools"][0]["file_search_store_names"] == [service.store_name]
+    assert calls[0]["is_json"] is True
+    assert calls[0].get("use_file_search", True) is True
+    assert "Nutrition in plants" in calls[0]["input"]
+    assert "Green plants make food through photosynthesis." in calls[0]["input"]
     assert calls[0]["tools"][0]["metadata_filter"] == (
         'subject="biology" AND class_level="S1"'
     )
