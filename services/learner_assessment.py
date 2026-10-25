@@ -6,7 +6,12 @@ from uuid import UUID
 from sqlalchemy import select
 
 from core.enums import AssessmentStatus, ClassLevel, ContentType, SubjectName
-from core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from core.exceptions import (
+    AuthorizationError,
+    BusinessRuleError,
+    ConflictError,
+    NotFoundError,
+)
 from models.learner_assessment import LearnerAssessment
 from models.learning_content import LearningContent
 from models.topic import Topic
@@ -170,7 +175,15 @@ class LearnerAssessmentService:
     async def start_assessment(
         self,
         data: LearnerAssessmentCreate,
+        current_user: User | None = None,
     ) -> LearnerAssessment:
+        if (
+            current_user is not None
+            and getattr(current_user, "user_id") != data.student_id
+        ):
+            raise AuthorizationError(
+                "Not authorized to start assessment for this student."
+            )
         try:
             existing = self.assessment_repo.get_by_client_attempt(
                 data.student_id,
@@ -255,11 +268,17 @@ class LearnerAssessmentService:
         self,
         assessment_id: UUID,
         submit_data: LearnerAssessmentSubmit,
+        current_user: User | None = None,
     ) -> LearnerAssessment:
         assessment = self.assessment_repo.get_by_id(assessment_id)
 
         if assessment is None:
             raise NotFoundError("Assessment not found.")
+
+        if current_user is not None and getattr(assessment, "student_id") != getattr(
+            current_user, "user_id"
+        ):
+            raise AuthorizationError("Not authorized to submit this assessment.")
 
         if assessment.status != AssessmentStatus.IN_PROGRESS:
             raise ConflictError("Only an in-progress assessment can be submitted.")
@@ -345,12 +364,25 @@ class LearnerAssessmentService:
         student_id: UUID | None = None,
         skip: int = 0,
         limit: int = 100,
+        current_user: User | None = None,
     ) -> list[LearnerAssessment]:
         self._validate_paging(skip, limit, 500)
 
-        if student_id is not None:
+        target_student_id = (
+            student_id
+            if student_id is not None
+            else getattr(current_user, "user_id", None)
+        )
+        if (
+            current_user is not None
+            and target_student_id is not None
+            and target_student_id != getattr(current_user, "user_id")
+        ):
+            raise AuthorizationError("Not authorized to view these assessments.")
+
+        if target_student_id is not None:
             return self.assessment_repo.list_by_student(
-                student_id=student_id,
+                student_id=target_student_id,
                 skip=skip,
                 limit=limit,
             )
@@ -364,8 +396,11 @@ class LearnerAssessmentService:
         self,
         student_id: UUID,
         limit: int = 5,
+        current_user: User | None = None,
     ) -> list[LearnerAssessment]:
         self._validate_paging(0, limit, 50)
+        if current_user is not None and student_id != getattr(current_user, "user_id"):
+            raise AuthorizationError("Not authorized to view these results.")
 
         return self.assessment_repo.list_recent_completed(
             student_id=student_id,
@@ -407,11 +442,17 @@ class LearnerAssessmentService:
     async def get_assessment(
         self,
         assessment_id: UUID,
+        current_user: User | None = None,
     ) -> LearnerAssessment:
         assessment = self.assessment_repo.get_by_id(assessment_id)
 
         if assessment is None:
             raise NotFoundError("Assessment not found.")
+
+        if current_user is not None and getattr(assessment, "student_id") != getattr(
+            current_user, "user_id"
+        ):
+            raise AuthorizationError("Not authorized to view this assessment.")
 
         return assessment
 
@@ -419,11 +460,17 @@ class LearnerAssessmentService:
         self,
         assessment_id: UUID,
         data: LearnerAssessmentUpdate,
+        current_user: User | None = None,
     ) -> LearnerAssessment:
         assessment = self.assessment_repo.get_by_id(assessment_id)
 
         if assessment is None:
             raise NotFoundError("Assessment not found.")
+
+        if current_user is not None and getattr(assessment, "student_id") != getattr(
+            current_user, "user_id"
+        ):
+            raise AuthorizationError("Not authorized to update this assessment.")
 
         if assessment.status == AssessmentStatus.COMPLETED:
             raise ConflictError("Completed assessments cannot be edited.")

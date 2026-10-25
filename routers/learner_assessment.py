@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from core.enums import ClassLevel, SubjectName
 from database import get_db
+from models.user import User
 from repositories.learner_assessment import LearnerAssessmentRepository
+from routers.user import get_current_user
 from schemas.learner_assessment import (
     LearnerAssessmentCreate,
     LearnerAssessmentSubmit,
@@ -37,8 +39,9 @@ def get_assessment_service(
 async def start_assessment(
     data: LearnerAssessmentCreate,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.start_assessment(data)
+    return await service.start_assessment(data, current_user=current_user)
 
 
 @router.post(
@@ -49,8 +52,11 @@ async def submit_assessment(
     assessment_id: UUID,
     submit_data: LearnerAssessmentSubmit,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.submit_assessment(assessment_id, submit_data)
+    return await service.submit_assessment(
+        assessment_id, submit_data, current_user=current_user
+    )
 
 
 @router.get("/", response_model=list[LearnerAssessmentResponse])
@@ -59,8 +65,11 @@ async def list_assessments(
     skip: int = 0,
     limit: int = 100,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.list_assessments(student_id, skip, limit)
+    return await service.list_assessments(
+        student_id, skip, limit, current_user=current_user
+    )
 
 
 @router.get(
@@ -71,8 +80,11 @@ async def list_recent_results(
     student_id: UUID,
     limit: int = 5,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.list_recent_results(student_id, limit)
+    return await service.list_recent_results(
+        student_id, limit, current_user=current_user
+    )
 
 
 @router.get("/lessons", response_model=list[LearnerLessonOption])
@@ -80,6 +92,7 @@ async def list_available_lessons(
     subject_name: SubjectName,
     class_level: ClassLevel,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
     return await service.list_available_lessons(subject_name, class_level)
 
@@ -91,8 +104,9 @@ async def list_available_lessons(
 async def get_assessment(
     assessment_id: UUID,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.get_assessment(assessment_id)
+    return await service.get_assessment(assessment_id, current_user=current_user)
 
 
 @router.patch(
@@ -103,5 +117,8 @@ async def update_assessment(
     assessment_id: UUID,
     data: LearnerAssessmentUpdate,
     service: LearnerAssessmentService = Depends(get_assessment_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return await service.update_assessment(assessment_id, data)
+    return await service.update_assessment(
+        assessment_id, data, current_user=current_user
+    )
