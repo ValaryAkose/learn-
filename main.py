@@ -1,9 +1,11 @@
+from pathlib import Path
 from dotenv import load_dotenv
 import config  # noqa: F401
 from config import settings
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from routers.sync_event import router as sync_event_router
 from core.exceptions import AppError
 from core.security import InvalidToken
@@ -26,6 +28,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+curriculum_dir = Path(__file__).resolve().parent / "curriculum"
+if curriculum_dir.exists():
+    app.mount(
+        "/curriculum", StaticFiles(directory=str(curriculum_dir)), name="curriculum"
+    )
 
 app.include_router(ai_tutor_interactions_router)
 app.include_router(learner_lesson_progress_router, prefix="/api/v1")

@@ -127,6 +127,14 @@ class AIService:
             if response.lower().startswith("json"):
                 response = response[4:].strip()
 
+        fixed_lines = []
+        for line in response.splitlines():
+            stripped = line.strip()
+            if stripped.startswith('- "') or stripped.startswith("- '"):
+                line = line.replace('- "', '"', 1).replace("- '", "'", 1)
+            fixed_lines.append(line)
+        response = "\n".join(fixed_lines).strip()
+
         try:
             result = json.loads(response)
         except json.JSONDecodeError as exc:
@@ -407,8 +415,8 @@ class AIService:
         correct_count = len(questions) - len(corrections)
         return round((max(0, correct_count) / len(questions)) * 100, 1)
 
-    def _calculate_speed(self, actual: int, target: int) -> float:
-        if target <= 0 or actual <= 0:
+    def _calculate_speed(self, actual: int, target: int | None) -> float:
+        if target is None or target <= 0 or actual is None or actual <= 0:
             return 100.0
         if actual <= target:
             return 100.0
