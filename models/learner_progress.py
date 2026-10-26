@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -6,6 +8,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     ForeignKey,
     ForeignKeyConstraint,
+    Integer,
     Text,
     UniqueConstraint,
     func,
@@ -50,7 +53,12 @@ class LearnerProgress(Base):
     )
 
     subject_name: Mapped[SubjectName] = mapped_column(
-        SQLEnum(SubjectName, name="subject_name"),
+        SQLEnum(
+            SubjectName,
+            name="subject_name",
+            native_enum=True,
+            create_type=False,
+        ),
         nullable=False,
     )
 
@@ -59,8 +67,14 @@ class LearnerProgress(Base):
         nullable=False,
     )
 
+    completion_percentage: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
     progress_status: Mapped[ProgressStatus] = mapped_column(
-        SQLEnum(ProgressStatus, name="progress_status"),
+        SQLEnum(ProgressStatus, name="progress_status", native_enum=False),
         nullable=False,
         default=ProgressStatus.NOT_STARTED,
     )
@@ -71,7 +85,7 @@ class LearnerProgress(Base):
     )
 
     latest_evaluation: Mapped[EvaluationStatus | None] = mapped_column(
-        SQLEnum(EvaluationStatus, name="evaluation_status"),
+        SQLEnum(EvaluationStatus, name="evaluation_status", native_enum=False),
         nullable=True,
     )
 
