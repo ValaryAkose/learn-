@@ -127,6 +127,14 @@ class AIService:
             if response.lower().startswith("json"):
                 response = response[4:].strip()
 
+        fixed_lines = []
+        for line in response.splitlines():
+            stripped = line.strip()
+            if stripped.startswith('- "') or stripped.startswith("- '"):
+                line = line.replace('- "', '"', 1).replace("- '", "'", 1)
+            fixed_lines.append(line)
+        response = "\n".join(fixed_lines).strip()
+
         try:
             result = json.loads(response)
         except json.JSONDecodeError as exc:
@@ -150,12 +158,12 @@ class AIService:
             mime_type = "application/json" if kwargs.get("is_json") else "text/plain"
             tools = []
             if self.store_name and kwargs.get("use_file_search", True):
+                file_search_options = {"file_search_store_names": [self.store_name]}
+                for tool in kwargs.get("tools") or []:
+                    if tool.get("metadata_filter"):
+                        file_search_options["metadata_filter"] = tool["metadata_filter"]
                 tools.append(
-                    types.Tool(
-                        file_search=types.FileSearch(
-                            file_search_store_names=[self.store_name]
-                        )
-                    )
+                    types.Tool(file_search=types.FileSearch(**file_search_options))
                 )
 
             response = client.models.generate_content(
@@ -343,14 +351,24 @@ class AIService:
         class_level: Any,
         assessment_type: Any,
         topic_title: str | None = None,
+        lesson_context: str | None = None,
         question_count: int = 8,
+        **kwargs,
     ) -> list[dict]:
+        if lesson_context is None:
+            lesson_context = kwargs.get("lesson_context")
         question_count = int(question_count)
         if question_count < 1:
             raise ValueError("Question count must be greater than zero.")
 
         topic_instruction = (
             f"\nFocus on this topic: {topic_title}" if topic_title else ""
+        )
+        lesson_instruction = (
+            "\nUse the learner-selected lesson below strictly as the assessment scope:\n"
+            f"{lesson_context}\n"
+            if lesson_context
+            else ""
         )
 
         prompt = (
@@ -361,6 +379,7 @@ class AIService:
             f"Assessment type: {self._value(assessment_type)}\n"
             f"Question count limit: up to {question_count}\n"
             f"{topic_instruction}\n"
+            f"{lesson_instruction}\n"
             "CRITICAL REQUIREMENT: Do not invent or create your own questions. Select exact or matching questions verbatim/closely from the retrieved textbook exercises.\n"
             "Each question object must include question_id, question_type, question_text, options, correct_answer, rubric_criteria, and points.\n"
             "Multiple-choice questions must have four options. Other question types must have an empty options list.\n"
@@ -368,7 +387,20 @@ class AIService:
             'Return JSON in the format {"questions": [...]}'
         )
 
-        interaction = await self._ask_gemini(input=prompt, is_json=True)
+        metadata_filter = (
+            f'subject="{self._value(subject_name)}" '
+            f'AND class_level="{self._value(class_level)}"'
+        )
+        interaction = await self._ask_gemini(
+            input=prompt,
+            is_json=True,
+            tools=[
+                {
+                    "file_search_store_names": [self.store_name],
+                    "metadata_filter": metadata_filter,
+                }
+            ],
+        )
         response = (getattr(interaction, "text", None) or "").strip()
 
         if not response:
@@ -383,8 +415,8 @@ class AIService:
         correct_count = len(questions) - len(corrections)
         return round((max(0, correct_count) / len(questions)) * 100, 1)
 
-    def _calculate_speed(self, actual: int, target: int) -> float:
-        if target <= 0 or actual <= 0:
+    def _calculate_speed(self, actual: int, target: int | None) -> float:
+        if target is None or target <= 0 or actual is None or actual <= 0:
             return 100.0
         if actual <= target:
             return 100.0
@@ -442,7 +474,12 @@ class AIService:
         )
 
         interaction = await self._ask_gemini(input=prompt, is_json=True)
-        response = (getattr(interaction, "text", None) or "").strip()
+        response = (
+            getattr(interaction, "text", None)
+            or getattr(interaction, "output_text", None)
+            or getattr(interaction, "content", None)
+            or ""
+        ).strip()
 
         if not response:
             raise RuntimeError("Gemini returned an empty evaluation response.")

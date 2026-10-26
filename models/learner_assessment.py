@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     DateTime,
     Enum as SQLEnum,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -98,6 +99,26 @@ class LearnerAssessment(Base):
         JSONB,
         nullable=False,
         default=list,
+    )
+
+    target_duration_seconds: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    actual_duration_seconds: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    accuracy_percentage: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    speed_percentage: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
     )
 
     identified_gaps: Mapped[str | None] = mapped_column(

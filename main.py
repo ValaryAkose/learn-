@@ -1,9 +1,11 @@
+from pathlib import Path
 from dotenv import load_dotenv
 import config  # noqa: F401
 from config import settings
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from core.exceptions import AppError
 from core.security import InvalidToken
 
@@ -12,6 +14,7 @@ from routers.ai_tutor_interactions import router as ai_tutor_interactions_router
 from routers.learner_lesson_progress import router as learner_lesson_progress_router
 from routers.offline_package import router as offline_package_router
 from routers.learner_contents import router as learner_contents_router
+from routers.learner_assessment import router as learner_assessment_router
 from routers.user import router as user_router
 from routers.topic import router as topic_router
 from routers.learner_progress import router as learner_progress_router
@@ -28,14 +31,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+curriculum_dir = Path(__file__).resolve().parent / "curriculum"
+if curriculum_dir.exists():
+    app.mount(
+        "/curriculum", StaticFiles(directory=str(curriculum_dir)), name="curriculum"
+    )
+
 app.include_router(ai_tutor_interactions_router)
+app.include_router(learner_lesson_progress_router, prefix="/api/v1")
+app.include_router(learner_progress_router, prefix="/api/v1")
 app.include_router(offline_package_router, prefix="/api/v1")
 app.include_router(sync_event_router, prefix="/api/v1")
 app.include_router(learner_contents_router, prefix="/api/v1")
+app.include_router(learner_assessment_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(topic_router, prefix="/api/v1")
-app.include_router(learner_lesson_progress_router, prefix="/api/v1")
-app.include_router(learner_progress_router, prefix="/api/v1")
 
 
 @app.exception_handler(AppError)
