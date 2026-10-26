@@ -61,14 +61,6 @@ async def invalid_token_handler(
     )
 
 
-app.include_router(ai_tutor_interactions_router)
-app.include_router(offline_package_router, prefix="/api/v1")
-app.include_router(sync_event_router, prefix="/api/v1")
-app.include_router(learner_contents_router, prefix="/api/v1")
-app.include_router(user_router, prefix="/api/v1")
-app.include_router(topic_router, prefix="/api/v1")
-
-
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
