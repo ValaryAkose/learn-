@@ -1,7 +1,9 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import config  # noqa: F401
+from config import settings
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from routers.sync_event import router as sync_event_router
@@ -18,6 +20,14 @@ from routers.topic import router as topic_router
 
 load_dotenv()
 app = FastAPI(title="Redu", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 curriculum_dir = Path(__file__).resolve().parent / "curriculum"
 if curriculum_dir.exists():
@@ -49,6 +59,14 @@ async def invalid_token_handler(
         status_code=401,
         content={"detail": "Invalid or expired access token"},
     )
+
+
+app.include_router(ai_tutor_interactions_router)
+app.include_router(offline_package_router, prefix="/api/v1")
+app.include_router(sync_event_router, prefix="/api/v1")
+app.include_router(learner_contents_router, prefix="/api/v1")
+app.include_router(user_router, prefix="/api/v1")
+app.include_router(topic_router, prefix="/api/v1")
 
 
 @app.get("/health")
