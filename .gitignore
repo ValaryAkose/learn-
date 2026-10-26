@@ -21,3 +21,4 @@ curriculum/
 *.db
 .tables/
 
+.vscode/

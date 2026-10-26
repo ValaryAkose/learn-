@@ -26,3 +26,6 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+
+
+run_migrations_online()
